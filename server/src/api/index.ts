@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const app = express();
-const port = 3000;
+const port = Number(process.env.PORT ?? 3000);
 
 // Secure cookies behind Railway proxy
 app.set("trust proxy", 1);
