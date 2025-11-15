@@ -177,7 +177,7 @@ export default function HeroSection() {
                       size="lg"
                       className="rounded-xl px-5 text-base"
                     >
-                      <Link to="/dashboard">
+                      <Link to="/auth/sign-in">
                         <span className="text-nowrap">Get Started Free</span>
                       </Link>
                     </Button>
