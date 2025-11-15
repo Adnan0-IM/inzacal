@@ -11,9 +11,9 @@ const app = express();
 const port = 3000;
 app.use(
   cors({
-    origin: ["https://inzacal.vercel.app/", "http://localhost:5173"],
+    origin: ["https://inzacal.vercel.app/api", "http://localhost:5173"],
     credentials: true,
-  })
+  }),
 );
 app.use("/api/auth/", toNodeHandler(auth));
 
@@ -32,7 +32,7 @@ const distPath = path.join(__dirname, "../../../../client/dist");
 app.use(express.static(distPath));
 
 const index = path.join(distPath, "index.html");
-console.log(index)
+console.log(index);
 // Health check should be before the SPA catch‑all
 app.get("/health", (_, res) => {
   res.status(200).json({ status: "Ok", timeStamp: new Date() });
@@ -42,7 +42,6 @@ app.get("/health", (_, res) => {
 app.get("/", (_, res) => {
   res.sendFile(index);
 });
-
 
 app.listen(port, () => {
   console.log(`Better Auth app listening on port ${port}`);
