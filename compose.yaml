@@ -1,0 +1,70 @@
+services:
+  web:
+    depends_on:
+      - api
+    build: ./client
+    ports:
+      - 5173:5173
+    environment:
+      BETTER_AUTH_URL: http://localhost:3000
+
+    develop:
+      watch:
+        - path: ./client/package.json
+          action: rebuild
+        - path: ./client/package-lock.json
+          action: rebuild
+        - path: ./client
+          target: /app
+          action: sync
+
+  api:
+    depends_on:
+      db:
+        condition: service_healthy
+    build: ./server
+    ports:
+      - 3000:3000
+    environment:
+      DATABASE_URL: postgresql://adnan:blabla@db:5432/inzakal?schema=public
+      APP_CLIENT_URL: http://localhost:5173
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-secret}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+
+    develop:
+      watch:
+        - path: ./server/package.json
+          action: rebuild
+        - path: ./server/package-lock.json
+          action: rebuild
+        - path: ./server/src
+          target: /app/src
+          action: sync
+        - path: ./server/prisma
+          target: /app/prisma
+          action: sync
+        - path: ./server/.env
+          target: /app/.env
+          action: sync
+
+  db:
+    image: postgres:latest
+    container_name: inzacal-postgres
+    environment:
+      POSTGRES_USER: adnan
+      POSTGRES_PASSWORD: blabla
+      POSTGRES_DB: inzacal
+    ports:
+      - "5432:5432"
+    volumes:
+      - inzakal_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adnan -d inzakal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+volumes:
+  inzakal_pgdata:
