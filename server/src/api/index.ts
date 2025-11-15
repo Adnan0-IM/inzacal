@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const app = express();
 const port = 3000;
 
-// Behind Railway proxy; needed for Secure cookies + SameSite=None
+// Secure cookies behind Railway proxy
 app.set("trust proxy", 1);
 
 const allowedOrigins = new Set<string>([
@@ -20,30 +20,58 @@ const allowedOrigins = new Set<string>([
 
 const corsOptions: cors.CorsOptions = {
   origin(origin, callback) {
-    if (!origin) return callback(null, true); // SSR/healthchecks
+    if (!origin) return callback(null, true); // health/SSR
     if (allowedOrigins.has(origin)) return callback(null, true);
     return callback(new Error(`Origin ${origin} not allowed by CORS`));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  // include any headers Better Auth/client might send
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "x-better-auth-csrf",
+    "better-auth-csrf",
+  ],
   optionsSuccessStatus: 204,
 };
 
+// 1) Global CORS
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+// 2) Hard-set headers for all API routes (ensures Better Auth responses include them)
+app.use("/api", (req, res, next) => {
+  const origin = req.headers.origin as string | undefined;
+  if (origin && allowedOrigins.has(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Vary", "Origin");
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-Requested-With, x-better-auth-csrf, better-auth-csrf"
+    );
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+  }
+  next();
+});
 
-app.use("/api/auth/", toNodeHandler(auth));
 app.use(express.json());
 
+// Better Auth (no /api duplication in baseURL on the client)
+app.use("/api/auth/", toNodeHandler(auth));
+
+// Your APIs
 app.use("/api/products", productsRouter);
 app.use("/api/sales", salesRouter);
 
-// ESM-safe __dirname
+// Static (optional)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.join(__dirname, "../../../../client/dist");
 app.use(express.static(distPath));
-
 const index = path.join(distPath, "index.html");
 
 app.get("/health", (_, res) => {

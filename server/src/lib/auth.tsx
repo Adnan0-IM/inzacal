@@ -17,7 +17,6 @@ const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 const FROM_EMAIL = process.env.RESEND_FROM ?? "onboarding@resend.dev";
-const FRONTEND_URL = process.env.NODE_ENV !== "production" ? process.env.FRONTEND_URL ?? "http://localhost:5173" : "https://inzacal.vercel.app";
 const SITE_NAME = process.env.SITE_NAME ?? "Inzacal";
 const EMAIL_DELIVERY_DISABLED =
   process.env.EMAIL_DELIVERY_DISABLED === "1" ||
@@ -25,7 +24,7 @@ const EMAIL_DELIVERY_DISABLED =
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
-  trustedOrigins: [FRONTEND_URL],
+  trustedOrigins: ["http://localhost:5173", "https://inzacal.vercel.app"],
   plugins: [twoFactor(), organization()],
   emailAndPassword: {
     enabled: true,
