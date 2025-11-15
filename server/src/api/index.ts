@@ -70,7 +70,8 @@ app.use("/api/sales", salesRouter);
 
 // Static (optional)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distPath = path.join(__dirname, "../../../../client/dist");
+// const distPath = path.join(__dirname, "../../../../client/dist");
+const distPath = path.join(process.cwd(), "client/dist");
 app.use(express.static(distPath));
 const index = path.join(distPath, "index.html");
 
@@ -78,6 +79,8 @@ app.get("/health", (_, res) => {
   res.status(200).json({ status: "Ok", timeStamp: new Date() });
 });
 
+
+// Root + SPA fallback (serve index.html for any non-/api path)
 app.get("/", (_, res) => {
   res.sendFile(index);
 });
