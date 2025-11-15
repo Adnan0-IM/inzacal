@@ -24,7 +24,7 @@ const EMAIL_DELIVERY_DISABLED =
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
-  trustedOrigins: ["http://localhost:5173", "https://inzacal.vercel.app"],
+  trustedOrigins: ["http://localhost:5173", "https://inzacal.vercel.app", "https://inzacal-production.up.railway.app"],
   plugins: [twoFactor(), organization()],
   emailAndPassword: {
     enabled: true,

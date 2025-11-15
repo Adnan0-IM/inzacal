@@ -16,6 +16,7 @@ app.set("trust proxy", 1);
 const allowedOrigins = new Set<string>([
   "http://localhost:5173",
   "https://inzacal.vercel.app",
+  "https://inzacal-production.up.railway.app"
 ]);
 
 const corsOptions: cors.CorsOptions = {
