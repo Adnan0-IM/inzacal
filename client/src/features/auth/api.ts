@@ -1,7 +1,8 @@
+import { API_BASE_URL } from "@/config/constants";
 import { api } from "@/lib/http";
 
 const AUTH_BASE =
-  import.meta.env.VITE_AUTH_BASE_URL ?? "http://localhost:3000/api/auth";
+  `${API_BASE_URL}/auth`
 
 export type User = {
   id: string;
