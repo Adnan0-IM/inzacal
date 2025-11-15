@@ -9,16 +9,31 @@ import { fileURLToPath } from "node:url";
 
 const app = express();
 const port = 3000;
-app.use(
-  cors({
-    origin: ["https://inzacal.vercel.app/api", "http://localhost:5173"],
-    credentials: true,
-  }),
-);
-app.use("/api/auth/", toNodeHandler(auth));
 
-// Mount express json middleware after Better Auth handler
-// or only apply it to routes that don't interact with Better Auth
+// Behind Railway proxy; needed for Secure cookies + SameSite=None
+app.set("trust proxy", 1);
+
+const allowedOrigins = new Set<string>([
+  "http://localhost:5173",
+  "https://inzacal.vercel.app",
+]);
+
+const corsOptions: cors.CorsOptions = {
+  origin(origin, callback) {
+    if (!origin) return callback(null, true); // SSR/healthchecks
+    if (allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+app.use("/api/auth/", toNodeHandler(auth));
 app.use(express.json());
 
 app.use("/api/products", productsRouter);
@@ -26,19 +41,15 @@ app.use("/api/sales", salesRouter);
 
 // ESM-safe __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// const distPath = path.join(__dirname, "../../../client/dist");
-
 const distPath = path.join(__dirname, "../../../../client/dist");
 app.use(express.static(distPath));
 
 const index = path.join(distPath, "index.html");
-console.log(index);
-// Health check should be before the SPA catch‑all
+
 app.get("/health", (_, res) => {
   res.status(200).json({ status: "Ok", timeStamp: new Date() });
 });
 
-// SPA fallback last
 app.get("/", (_, res) => {
   res.sendFile(index);
 });
