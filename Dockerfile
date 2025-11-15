@@ -32,8 +32,10 @@ RUN npm prune --omit=dev
 # Prisma schema/migrations (optional if you run migrations on start)
 COPY --from=server-builder /app/prisma ./prisma
 
-# Copy client build into expected /app/client/dist so server can serve it
+# Copy client build into both locations (compat)
 COPY --from=client-builder /client/dist ./client/dist
+COPY --from=client-builder /client/dist /client/dist
 
 EXPOSE 3000
-CMD ["node", "dist/src/api/index.js"]
+# Run migrations then start the server
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/api/index.js"]
