@@ -25,7 +25,11 @@ const EMAIL_DELIVERY_DISABLED =
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   database: prismaAdapter(prisma, { provider: "postgresql" }),
-  trustedOrigins: ["http://localhost:5173", "https://inzacal.vercel.app", "https://inzacal-production.up.railway.app"],
+  trustedOrigins: [
+    "http://localhost:5173",
+    "https://inzacal.vercel.app",
+    "https://inzacal-production.up.railway.app",
+  ],
   plugins: [twoFactor(), organization()],
   emailAndPassword: {
     enabled: true,
@@ -42,6 +46,16 @@ export const auth = betterAuth({
           },
         }
       : {},
+  cookieCache: {
+    enabled: true,
+    cookie: {
+      domain: "inzacal-production.up.railway.app", // <- same as above
+      secure: true,
+      sameSite: "lax",
+      httpOnly: true,
+      path: "/",
+    },
+  },
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
       const name = user.name || user.email.split("@")[0];
@@ -50,7 +64,7 @@ export const auth = betterAuth({
       if (EMAIL_DELIVERY_DISABLED || !resend) {
         console.warn(
           "Email delivery disabled in this environment; verification link:",
-          url,
+          url
         );
         return;
       }
