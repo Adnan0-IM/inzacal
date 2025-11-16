@@ -23,6 +23,7 @@ const EMAIL_DELIVERY_DISABLED =
   process.env.NODE_ENV !== "production";
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   trustedOrigins: ["http://localhost:5173", "https://inzacal.vercel.app", "https://inzacal-production.up.railway.app"],
   plugins: [twoFactor(), organization()],
