@@ -17,47 +17,50 @@ const RouterLink = ({ href, className, children }: LinkProps) => (
 export function Providers({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   return (
-    <AuthUIProvider
-      authClient={authClient}
-      navigate={navigate}
-      Link={RouterLink}
-      organization={{
-        logo: true,
-        customRoles: [
-          { role: "accountant", label: "Accountant" },
-          { role: "salesperson", label: "Salesperson" },
-        ],
-      }}
-      social={{
-        providers: ["google"],
-      }}
-      avatar={{
-        upload: async (file) => {
-          const formData = new FormData();
-          formData.append("avatar", file);
-          const res = await fetch("/api/uploadAvatar", {
-            method: "POST",
-            body: formData,
-          });
-          const { data } = await res.json();
-          return data.url;
-        },
-        delete: async (url) => {
-          await fetch("/api/deleteAvatar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url }),
-          });
-        },
-      }}
-      // captcha={{
-      //   provider: "google-recaptcha-v3",
-      //   siteKey: "your-site-key",
-      // }}
-      
-      // twoFactor={["otp", "totp"]}
-    >
-      {children}
-    </AuthUIProvider>
+    <>
+      <AuthUIProvider
+        authClient={authClient}
+        navigate={navigate}
+        Link={RouterLink}
+        redirectTo="/dashboard"
+        organization={{
+          logo: true,
+          customRoles: [
+            { role: "accountant", label: "Accountant" },
+            { role: "salesperson", label: "Salesperson" },
+          ],
+        }}
+        social={{
+          providers: ["google"],
+        }}
+        avatar={{
+          upload: async (file) => {
+            const formData = new FormData();
+            formData.append("avatar", file);
+            const res = await fetch("/api/uploadAvatar", {
+              method: "POST",
+              body: formData,
+            });
+            const { data } = await res.json();
+            return data.url;
+          },
+          delete: async (url) => {
+            await fetch("/api/deleteAvatar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url }),
+            });
+          },
+        }}
+        // captcha={{
+        //   provider: "google-recaptcha-v3",
+        //   siteKey: "your-site-key",
+        // }}
+
+        // twoFactor={["otp", "totp"]}
+      >
+        {children}
+      </AuthUIProvider>
+    </>
   );
 }

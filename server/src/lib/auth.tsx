@@ -34,6 +34,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     // requireEmailVerification: true,
+    autoSignIn: true,
   },
   socialProviders:
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
@@ -46,16 +47,6 @@ export const auth = betterAuth({
           },
         }
       : {},
-  cookieCache: {
-    enabled: true,
-    cookie: {
-      domain: "inzacal-production.up.railway.app", // <- same as above
-      secure: true,
-      sameSite: "lax",
-      httpOnly: true,
-      path: "/",
-    },
-  },
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
       const name = user.name || user.email.split("@")[0];

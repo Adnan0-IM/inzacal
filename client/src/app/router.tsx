@@ -1,16 +1,22 @@
 import { Routes, Route } from "react-router";
 import { lazy, Suspense } from "react";
+import GuestOnlyAuthRoute from "./guards/GuestOnlyAuthRoute";
 
 const HomePage = lazy(() => import("@/pages/Landing/HomePage"));
 const NotFoundPage = lazy(() => import("@/pages/not-found/NotFoundPage"));
 const AuthLayout = lazy(() => import("./layouts/AuthLayout"));
 const AuthPage = lazy(() => import("@/pages/auth/AuthPage"));
-const RootLayout = lazy(() => import("./layouts/RootLayout"));
+const PrivateRootLayout = lazy(() => import("./layouts/PrivateRootLayout"));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage"));
-const ProtectedRoute = lazy(() => import("@/app/guards/ProtectedRoute"))
-const OrganizationSettingsPage = lazy(() => import("@/pages/dashboard/organization/OrganizationSettingsPage"))
-const OrganizationMembersPage = lazy(() => import("@/pages/dashboard/organization/OrganizationMembersPage"))
-const AccountPage = lazy(() => import("@/pages/dashboard/organization/AccountPage"))
+const OrganizationSettingsPage = lazy(
+  () => import("@/pages/dashboard/organization/OrganizationSettingsPage")
+);
+const OrganizationMembersPage = lazy(
+  () => import("@/pages/dashboard/organization/OrganizationMembersPage")
+);
+const AccountPage = lazy(
+  () => import("@/pages/dashboard/organization/AccountPage")
+);
 
 // Optional: stub pages for roadmap sections
 const InventoryPage = () => <div className="p-6">Inventory</div>;
@@ -24,26 +30,30 @@ const AppRouter = () => {
     <Suspense fallback={null}>
       <Routes>
         <Route index element={<HomePage />} />
-
-        <Route element={<RootLayout />}>
+        <Route element={<PrivateRootLayout />}>
           {/* Protected app */}
-          <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/dashboard/inventory" element={<InventoryPage />} />
             <Route path="/dashboard/sales" element={<SalesPage />} />
             <Route path="/dashboard/expenses" element={<ExpensesPage />} />
             <Route path="/dashboard/investors" element={<InvestorsPage />} />
             <Route path="/dashboard/reports" element={<ReportsPage />} />
-
-            <Route path="/organization/settings" element={<OrganizationSettingsPage />} />
-            <Route path="/organization/members" element={<OrganizationMembersPage />} />
+            <Route
+              path="/organization/settings"
+              element={<OrganizationSettingsPage />}
+            />
+            <Route
+              path="/organization/members"
+              element={<OrganizationMembersPage />}
+            />
             <Route path="/account/settings" element={<AccountPage />} />
-          </Route>
-
         </Route>
 
-        <Route element={<AuthLayout />}>
-          <Route path="/auth/:pathname" element={<AuthPage />} />
+        {/* Auth pages: only block sign-in/sign-up when logged in */}
+        <Route element={<GuestOnlyAuthRoute />}>
+          <Route element={<AuthLayout />}>
+            <Route path="/auth/:pathname" element={<AuthPage />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

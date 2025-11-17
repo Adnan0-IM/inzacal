@@ -6,4 +6,5 @@ import { SERVER_URL } from "@/config/constants";
 export const authClient = createAuthClient({
   baseURL: SERVER_URL,
   plugins: [organizationClient()],
+  
 });
