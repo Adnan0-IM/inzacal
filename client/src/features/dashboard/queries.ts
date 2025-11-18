@@ -1,13 +1,71 @@
 import { useQuery } from "@tanstack/react-query";
-import { getSalesSummary,type Period } from "./api";
+import {
+  getDashboardSummary,
+  getLowStock as fetchLowStock,
+  getRecentSales as fetchRecentSales,
+  getSalesVsExpenses as fetchSalesVsExpenses,
+  getTopProducts as fetchTopProducts,
+} from "./api";
+
+export type {
+  Summary,
+  LowStockItem,
+  RecentSale,
+  SeriesPoint,
+  TopProductPoint,
+} from "./api";
 
 export function useDashboardSummary(
-  orgId?: string | null,
-  period: Period = "monthly"
+  orgId?: string,
+  from?: string,
+  to?: string
 ) {
   return useQuery({
-    queryKey: ["sales-summary", orgId, period],
-    enabled: !!orgId,
-    queryFn: () => getSalesSummary(orgId as string, period),
+    queryKey: ["dashboard", "summary", { orgId, from, to }],
+    queryFn: () => getDashboardSummary(orgId, from, to),
+  });
+}
+
+export function useLowStock(orgId?: string, limit = 5) {
+  return useQuery({
+    queryKey: ["inventory", "low-stock", { orgId, limit }],
+    queryFn: () => fetchLowStock(orgId, limit),
+  });
+}
+
+export function useRecentSales(orgId?: string, limit = 5) {
+  return useQuery({
+    queryKey: ["sales", "recent", { orgId, limit }],
+    queryFn: () => fetchRecentSales(orgId, limit),
+  });
+}
+
+export function useSalesVsExpenses(
+  orgId?: string,
+  from?: string,
+  to?: string,
+  interval = "day"
+) {
+  return useQuery({
+    queryKey: ["reports", "sales-vs-expenses", { orgId, from, to, interval }],
+    queryFn: () =>
+      fetchSalesVsExpenses(
+        orgId,
+        from,
+        to,
+        interval as "hour" | "day" | "month"
+      ),
+  });
+}
+
+export function useTopProducts(
+  orgId?: string,
+  from?: string,
+  to?: string,
+  limit = 5
+) {
+  return useQuery({
+    queryKey: ["reports", "top-products", { orgId, from, to, limit }],
+    queryFn: () => fetchTopProducts(orgId, from, to, limit),
   });
 }
