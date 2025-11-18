@@ -1,15 +1,20 @@
-
+import { motion } from "framer-motion";
 export default function AboutSection() {
   return (
     <section className="">
       <div className="mx-auto max-w-5xl px-6">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">About Inzacal</h2>
-          <div className="w-16 h-1 bg-gradient-to-r from-primary to-primary/60 mx-auto rounded-full"></div>
+          <div className="w-16 h-1 bg-linear-to-r from-primary to-primary/60 mx-auto rounded-full"></div>
         </div>
 
         <div className="grid gap-12 md:grid-cols-2 items-center">
-          <div>
+          <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          >
             <h3 className="text-2xl font-semibold mb-6 text-foreground">
               Next-Generation Business Management
             </h3>
@@ -26,9 +31,14 @@ export default function AboutSection() {
                 profitability, transparency, and sustainable success.
               </p>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="relative">
+          <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          viewport={{ once: true }}
+          className="relative">
             <div className="bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl p-8 border border-border/50">
               <div className="space-y-6">
                 <div className="text-center">
@@ -55,7 +65,7 @@ export default function AboutSection() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
