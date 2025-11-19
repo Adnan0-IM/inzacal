@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Navigate } from "react-router";
 import { useSession } from "@/features/auth/hooks/useSession";
 import PageHeader from "@/components/common/PageHeader";
@@ -8,7 +8,6 @@ import {
 import EmptyState from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { useOrganization } from "@/features/dashboard/hooks/useOrganization";
-import { toast } from "sonner";
 
 type Period = "daily" | "weekly" | "monthly";
 
@@ -27,17 +26,6 @@ const DashboardPage = () => {
     [activeOrg, organizations]
   );
 
-  useEffect(() => {
-    if (noActiveOrgAndNoOrgs) {
-      const key = "inzacal:onboardingToastShown";
-      if (!localStorage.getItem(key)) {
-        toast.info(
-          "Welcome! Let's get started by creating your first organization."
-        );
-        localStorage.setItem(key, "1");
-      }
-    }
-  }, [noActiveOrgAndNoOrgs]);
 
   if (isLoading || isActiveOrgPending || isOrganizationsPending) {
     return (
