@@ -10,6 +10,9 @@ type EmptyStateProps = {
   action?: { to: string; label: string; icon?: ReactNode };
   secondary?: { to: string; label: string };
   isFirstOrg?: boolean;
+  // NEW: presentation controls
+  variant?: "page" | "card";
+  align?: "center" | "start";
 };
 
 export default function EmptyState({
@@ -18,6 +21,8 @@ export default function EmptyState({
   action,
   secondary,
   isFirstOrg = false,
+  variant = "page",
+  align = "center",
 }: EmptyStateProps) {
   if (isFirstOrg) {
     return (
@@ -101,22 +106,38 @@ export default function EmptyState({
   }
 
   // Generic empty state
+  const isCard = variant === "card";
+  const containerClass = isCard
+    ? // blend into Card content
+      `py-4 ${align === "start" ? "text-left" : "text-center"}`
+    : "rounded-lg border border-dashed p-8 text-center";
+  const bodyClass = `mx-auto max-w-lg space-y-2 ${align === "start" ? "text-left" : "text-center"}`;
+  const titleClass = isCard ? "text-sm font-medium" : "text-lg font-medium";
+  const descClass = isCard ? "text-xs text-muted-foreground" : "text-sm text-muted-foreground";
+
   return (
-    <div className="rounded-lg border border-dashed p-8 text-center">
-      <div className="mx-auto max-w-lg space-y-3">
-        <h2 className="text-lg font-medium">{title}</h2>
-        {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        )}
+    <div className={containerClass}>
+      <div className={bodyClass}>
+        <h2 className={titleClass}>{title}</h2>
+        {description && <p className={descClass}>{description}</p>}
         {action && (
-          <div className="pt-2">
-            <Link
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-              to={action.to}
-            >
-              {action.icon}
-              {action.label}
-            </Link>
+          <div className={isCard ? "pt-1" : "pt-2"}>
+            {isCard ? (
+              <Button asChild variant="outline" size="sm">
+                <Link to={action.to}>
+                  {action.icon}
+                  {action.label}
+                </Link>
+              </Button>
+            ) : (
+              <Link
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                to={action.to}
+              >
+                {action.icon}
+                {action.label}
+              </Link>
+            )}
           </div>
         )}
       </div>

@@ -95,6 +95,7 @@ export const nav: NavGroup[] = [
     isActive: false,
     items: [
       { id: "account-settings", label: "Settings", to: "/account/settings" },
+      {id:"organizations-settings", label:"Organizations", to:"/account/organizations" },
     ],
   },
 ];
@@ -106,6 +107,12 @@ export function canView(role: Role | undefined, item: NavItem): boolean {
 }
 
 export function filterNavByRole(groups: NavGroup[], role?: Role): NavGroup[] {
+  if (!role) {
+    return groups.map((g) => ({
+      ...g,
+      items: g.items.filter((i) => !i.roles),
+    })).filter((g) => g.label !== "Organization");
+  }
   return groups
     .map((g) => ({
       ...g,
@@ -114,10 +121,9 @@ export function filterNavByRole(groups: NavGroup[], role?: Role): NavGroup[] {
         .map((i) =>
           i.children
             ? { ...i, children: i.children.filter((c) => canView(role, c)) }
-            : i,
+            : i
         )
         .filter((i) => (i.children ? i.children.length > 0 : true)),
     }))
     .filter((g) => g.items.length > 0);
 }
-
