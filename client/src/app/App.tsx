@@ -5,7 +5,7 @@ import { Toaster } from "sonner";
 
 const App = () => {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <AppRouter />
       <Toaster position="top-right" richColors />
     </ThemeProvider>

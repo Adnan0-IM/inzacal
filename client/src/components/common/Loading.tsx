@@ -1,5 +1,10 @@
 import { useLocation } from "react-router";
-import { CardsSkeleton, PageHeaderSkeleton } from "./Skeleton";
+import {
+  CardsSkeleton,
+  GenericChartsSkeleton,
+  GenericHeaderSkeleton,
+  GenericSidebarSkeleton,
+} from "./Skeleton";
 
 type LoadingProps = {
   size?: number; // tailwind w/h in px
@@ -22,9 +27,17 @@ const Loading = ({ size = 20, className = "" }: LoadingProps) => {
     );
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <PageHeaderSkeleton />
-      <CardsSkeleton />
+    <div className="p-6 grid gap-6 md:grid-cols-4">
+      {/* Sidebar */}
+      <aside className="space-y-6 hidden md:block">
+        <GenericSidebarSkeleton />
+      </aside>
+      {/* Main */}
+      <main className="md:col-span-3 space-y-8">
+        <GenericHeaderSkeleton />
+        <GenericChartsSkeleton />
+        <CardsSkeleton />
+      </main>
     </div>
   );
 };

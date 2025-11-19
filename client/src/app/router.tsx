@@ -42,7 +42,7 @@ const AppRouter = () => {
         <Suspense fallback={<Loading />}>
     <Routes>
         <Route index element={<HomePage />} />
-
+<Route path="/loading" element={<Loading />} />
         {/* Protected app */}
         <Route element={<PrivateRootLayout />}>
           <Route path="/dashboard">

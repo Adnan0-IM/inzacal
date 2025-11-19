@@ -1,26 +1,48 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router";
 import { useSession } from "@/features/auth/hooks/useSession";
 import PageHeader from "@/components/common/PageHeader";
 import {
-  PageHeaderSkeleton,
   CardsSkeleton,
 } from "@/components/common/Skeleton";
 import EmptyState from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { useOrganization } from "@/features/dashboard/hooks/useOrganization";
+import { toast } from "sonner";
 
 type Period = "daily" | "weekly" | "monthly";
 
 const DashboardPage = () => {
   const { data, isLoading, error } = useSession();
   const [period, setPeriod] = useState<Period>("monthly");
-  const { activeOrg, organizations } = useOrganization();
+  const {
+    activeOrg,
+    isActiveOrgPending,
+    organizations,
+    isOrganizationsPending,
+  } = useOrganization();
 
-  if (isLoading) {
+  const noActiveOrgAndNoOrgs = useMemo(
+    () => !activeOrg && (organizations?.length ?? 0) === 0,
+    [activeOrg, organizations]
+  );
+
+  useEffect(() => {
+    if (noActiveOrgAndNoOrgs) {
+      const key = "inzacal:onboardingToastShown";
+      if (!localStorage.getItem(key)) {
+        toast.info(
+          "Welcome! Let's get started by creating your first organization."
+        );
+        localStorage.setItem(key, "1");
+      }
+    }
+  }, [noActiveOrgAndNoOrgs]);
+
+  if (isLoading || isActiveOrgPending || isOrganizationsPending) {
     return (
       <div className="container mx-auto p-6 space-y-8">
-        <PageHeaderSkeleton />
+        {/* <PageHeaderSkeleton /> */}
         <CardsSkeleton />
       </div>
     );
@@ -28,8 +50,10 @@ const DashboardPage = () => {
   if (error || !data?.user) return <Navigate to="/auth/sign-in" replace />;
 
   const name = data.user.name ?? "guest";
+  // const currencyCode = activeOrg?.currency ?? "NGN";
+  const currencyCode = "NGN";
 
-  // TODO: Replace with real queries
+  // TODO: Replace with real queries (key by org + period)
   const summary = {
     salesToday: 0,
     revenueMtd: 0,
@@ -47,16 +71,16 @@ const DashboardPage = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-8">
-      <PageHeader
-        title={name}
-        subtitle="Welcome"
-      />
-      {!activeOrg && organizations?.length === 0 ? (
+      <PageHeader title={name} subtitle="Welcome" />
+      {noActiveOrgAndNoOrgs ? (
         /* First-time onboarding (only show when no orgs/sales yet) */
         <EmptyState
           title="Create your first organization"
           description="Organizations help you manage members and settings for your business."
-          secondary={{to: "/account/organizations", label: "Open organizations page"}}
+          secondary={{
+            to: "/account/organizations",
+            label: "Open organizations page",
+          }}
           action={{
             to: "/account/organizations",
             label: "Create organization",
@@ -76,15 +100,27 @@ const DashboardPage = () => {
               <option value="weekly">This week</option>
               <option value="monthly">This month</option>
             </select>
-            {/* TODO: Add OrganizationSwitcher here (current org context) */}
+
           </div>
 
           {/* KPIs */}
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <Kpi title="Sales today" value={summary.salesToday} />
-            <Kpi title="Revenue (MTD)" value={summary.revenueMtd} currency />
-            <Kpi title="Profit (MTD)" value={summary.profitMtd} currency />
-            <Kpi title="Expenses (MTD)" value={summary.expensesMtd} currency />
+            <Kpi
+              title="Revenue (MTD)"
+              value={summary.revenueMtd}
+              currencyCode={currencyCode}
+            />
+            <Kpi
+              title="Profit (MTD)"
+              value={summary.profitMtd}
+              currencyCode={currencyCode}
+            />
+            <Kpi
+              title="Expenses (MTD)"
+              value={summary.expensesMtd}
+              currencyCode={currencyCode}
+            />
           </section>
 
           {/* Trends */}
@@ -125,6 +161,8 @@ const DashboardPage = () => {
                       to: "/dashboard/inventory",
                       label: "Go to inventory",
                     }}
+                    variant="card"
+                    align="start"
                   />
                 ) : (
                   <ul className="divide-y">
@@ -157,6 +195,8 @@ const DashboardPage = () => {
                     title="No sales recorded yet"
                     description="Record your first sale to see it here."
                     action={{ to: "/dashboard/sales", label: "Record sale" }}
+                    variant="card"
+                    align="start"
                   />
                 ) : (
                   <ul className="divide-y">
@@ -167,7 +207,11 @@ const DashboardPage = () => {
                       >
                         <span className="text-sm">{s.ref}</span>
                         <span className="text-xs text-muted-foreground">
-                          ${s.amount}
+                          {/* Use org currency */}
+                          {new Intl.NumberFormat(undefined, {
+                            style: "currency",
+                            currency: currencyCode,
+                          }).format(s.amount)}
                         </span>
                       </li>
                     ))}
@@ -176,12 +220,6 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
           </section>
-
-          {/* Organizations/people quick glance */}
-          {/* <section className="space-y-4">
-        <OrganizationsCard />
-        <OrganizationMembersCard />
-      </section> */}
         </>
       )}
     </div>
@@ -191,23 +229,23 @@ const DashboardPage = () => {
 function Kpi({
   title,
   value,
-  currency,
+  currencyCode,
 }: {
   title: string;
   value: number;
-  currency?: boolean;
+  currencyCode?: string;
 }) {
-  const display = currency
+  const display = currencyCode
     ? new Intl.NumberFormat(undefined, {
         style: "currency",
-        currency: "USD",
+        currency: currencyCode,
       }).format(value)
     : value.toLocaleString();
   return (
     <Card>
       <CardContent className="p-4">
         <div className="text-sm text-muted-foreground">{title}</div>
-        <div className="text-2xl font-semibold">{display}</div>
+        <div className="text-xl font-semibold">{display}</div>
       </CardContent>
     </Card>
   );
