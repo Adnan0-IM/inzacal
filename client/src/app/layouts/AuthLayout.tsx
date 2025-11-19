@@ -1,6 +1,7 @@
 import { Outlet, Link } from "react-router";
 import { ModeToggle } from "@/components/mode-toggle";
 import { SignedIn } from "@daveyplate/better-auth-ui";
+import logo from "@/assets/logo.jpg"
 
 export default function AuthLayout() {
   return (
@@ -8,7 +9,8 @@ export default function AuthLayout() {
       <header className="border-b">
         <div className="container mx-auto p-4 flex items-center justify-between">
           <Link to="/" className="font-semibold">
-            Inzakal
+            
+            <img loading="lazy" className="" width={70} src={logo} alt="inzacal logo" />
           </Link>
           <div className="flex items-center gap-3">
             <SignedIn>
