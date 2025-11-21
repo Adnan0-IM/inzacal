@@ -1,6 +1,7 @@
 import { AuthUIProvider } from "@daveyplate/better-auth-ui";
 import { authClient } from "@/lib/auth-client";
 import { useNavigate, NavLink } from "react-router";
+import { api } from "@/lib/http";
 
 type LinkProps = {
   href: string;
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         navigate={navigate}
         Link={RouterLink}
         redirectTo="/dashboard"
+        account={{}}
         organization={{
           logo: true,
           customRoles: [
@@ -37,16 +39,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
           upload: async (file) => {
             const formData = new FormData();
             formData.append("avatar", file);
-            const res = await fetch("/api/uploadAvatar", {
-              method: "POST",
-              body: formData,
-            });
-            const { data } = await res.json();
+            const res = await api.post("/uploadAvatar", formData)
+            const { data } = await res;
             return data.url;
           },
           delete: async (url) => {
-            await fetch("/api/deleteAvatar", {
-              method: "POST",
+            await api.post("/deleteAvatar", {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ url }),
             });

@@ -52,6 +52,7 @@ export function NavMain({
                   <SidebarMenuButton
                     tooltip={item.label}
                     isActive={!!groupActive}
+                    className=""
                   >
                     {item.icon && <item.icon />}
                     <span>{item.label}</span>
@@ -68,7 +69,7 @@ export function NavMain({
                       return (
                         <SidebarMenuSubItem key={subItem.id}>
                           {/* Pass isActive so built-in styles apply */}
-                          <SidebarMenuSubButton asChild isActive={active}>
+                          <SidebarMenuSubButton className="" asChild isActive={active}>
                             <NavLink to={subItem.to}>
                               <span>{subItem.label}</span>
                             </NavLink>

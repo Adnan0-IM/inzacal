@@ -10,7 +10,7 @@ export default function AuthLayout() {
         <div className="container mx-auto p-4 flex items-center justify-between">
           <Link to="/" className="font-semibold">
             
-            <img loading="lazy" className="" width={70} src={logo} alt="inzacal logo" />
+            <img loading="lazy" className="" width={50} src={logo} alt="inzacal logo" />
           </Link>
           <div className="flex items-center gap-3">
             <SignedIn>
