@@ -2,6 +2,8 @@ import { Routes, Route } from "react-router"; // was react-router
 import { lazy, Suspense } from "react";
 import GuestOnlyAuthRoute from "./guards/GuestOnlyAuthRoute";
 import Loading from "@/components/common/Loading";
+import NewProduct from "@/pages/dashboard/inventory/NewProduct";
+import NewSalePage from "@/pages/dashboard/sales/NewSalePage";
 
 const HomePage = lazy(() => import("@/pages/Landing/HomePage"));
 const NotFoundPage = lazy(() => import("@/pages/not-found/NotFoundPage"));
@@ -28,27 +30,30 @@ const OrganizationLayout = lazy(
   () => import("@/pages/dashboard/organization/OrganizationLayout")
 );
 
+const InventoryPage = lazy(
+  () => import("@/pages/dashboard/inventory/InventoryPage")
+);
+
+const SalesPage = lazy( () => import("@/pages/dashboard/sales/SalesPage"))
 // Optional: stub pages for roadmap sections
-const InventoryPage = () => <div className="p-6">Inventory</div>;
-const SalesPage = () => <div className="p-6">Sales</div>;
 const ExpensesPage = () => <div className="p-6">Expenses</div>;
 const InvestorsPage = () => <div className="p-6">Investors</div>;
 const ReportsPage = () => <div className="p-6">Reports</div>;
 
-
-
 const AppRouter = () => {
   return (
-        <Suspense fallback={<Loading />}>
-    <Routes>
+    <Suspense fallback={<Loading />}>
+      <Routes>
         <Route index element={<HomePage />} />
-<Route path="/loading" element={<Loading />} />
+        <Route path="/loading" element={<Loading />} />
         {/* Protected app */}
         <Route element={<PrivateRootLayout />}>
           <Route path="/dashboard">
             <Route index element={<DashboardPage />} />
-            <Route path="inventory" element={<InventoryPage />} />
+            <Route path="inventory" element={<InventoryPage />}/>
+              <Route path="inventory/new" element={<NewProduct />} />
             <Route path="sales" element={<SalesPage />} />
+            <Route path="sales/new" element={<NewSalePage />} />
             <Route path="expenses" element={<ExpensesPage />} />
             <Route path="investors" element={<InvestorsPage />} />
             <Route path="reports" element={<ReportsPage />} />
