@@ -3,7 +3,8 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "../lib/auth.js";
 import { salesRouter } from "./sales.js";
 import { productsRouter } from "./products.js";
-
+import authorized from "./middleware/auth.js";
+import { analyticsRouter } from "./analytics.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
@@ -45,14 +46,18 @@ app.use("/api", (req, res, next) => {
   return res.status(403).send(`Origin ${origin} not allowed by CORS`);
 });
 
-app.use(express.json());
+// JSON body limit (adjust with JSON_BODY_LIMIT env, default 1mb). Large inline base64 images can exceed default.
+const jsonLimit = process.env.JSON_BODY_LIMIT || "1mb";
+app.use(express.json({ limit: jsonLimit }));
 
 // Better Auth
 app.use("/api/auth/", toNodeHandler(auth));
 
 // APIs
-app.use("/api/products", productsRouter);
-app.use("/api/sales", salesRouter);
+app.use("/api/products", authorized, productsRouter);
+app.use("/api/sales", authorized, salesRouter);
+app.use("/api/analytics", authorized, analyticsRouter);
+// app.use("/api/organizations", organizationsRouter);
 
 // Health
 app.get("/health", (_, res) => {

@@ -1,17 +1,15 @@
+import "dotenv/config";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { PrismaClient } from "@prisma/client";
 import { organization, twoFactor } from "better-auth/plugins";
 import { Resend } from "resend";
 import { emailVerification } from "../email/template.js";
+import { prisma, initDB } from "./prisma.js";
 
-// Reuse Prisma in dev
-declare global {
-  // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined;
-}
-const prisma = globalThis.prisma ?? new PrismaClient();
-if (process.env.NODE_ENV !== "production") globalThis.prisma = prisma;
+// Kick off connection in background (handles cold-start/sleep)
+initDB().catch((e) => {
+  console.warn("DB init retrying later:", e?.code ?? e?.message ?? e);
+});
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -31,9 +29,16 @@ export const auth = betterAuth({
     "https://inzacal-production.up.railway.app",
   ],
   plugins: [twoFactor(), organization()],
+  user: {
+    deleteUser:{
+      enabled: true
+    },
+    changeEmail: {
+      enabled: true
+    }
+  },
   emailAndPassword: {
     enabled: true,
-    // requireEmailVerification: true,
     autoSignIn: true,
   },
   socialProviders:
@@ -62,17 +67,14 @@ export const auth = betterAuth({
 
       try {
         const html = emailVerification(name, email, url, SITE_NAME);
-
         const result = await resend.emails.send({
           from: `${SITE_NAME} <${FROM_EMAIL}>`,
           to: user.email,
           subject: `Verify your ${SITE_NAME} email`,
           html,
         });
-
         if (result.error) {
           console.error("Resend error:", result.error);
-          // In production, surface the error; otherwise just warn
           if (process.env.NODE_ENV === "production") {
             throw new Error(result.error.message || "Failed to queue email");
           } else {
