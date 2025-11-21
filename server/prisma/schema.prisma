@@ -29,6 +29,7 @@ model User {
 
   members     Member[]
   invitations Invitation[]
+  sales       Sale[]
 
   @@unique([email])
   @@map("user")
@@ -95,9 +96,17 @@ model Organization {
   id          String       @id
   name        String
   slug        String
+  // currency    String
+  // address     String
   logo        String?
   createdAt   DateTime
   metadata    String?
+  // taxId       String?
+  // phone       String?
+  // website     String?
+  // industry    String?
+  // timezone    String?      @default("UTC")
+  // fiscalYearStart Int?     // 1-12 month number when fiscal year starts
   members     Member[]
   invitations Invitation[]
   products    Product[]
@@ -134,40 +143,51 @@ model Invitation {
 }
 
 model Product {
-  id                 String        @id @default(cuid())
-  organizationId     String
-  organization       Organization  @relation(fields: [organizationId], references: [id])
-  name               String
-  sku                String        @unique
-  unitCost           Decimal       @db.Decimal(10, 2)
-  unitPrice          Decimal       @db.Decimal(10, 2)
-  quantity           Int           @default(0)
-  lowStockThreshold  Int           @default(5)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  SaleItem           SaleItem[]
+  id          String   @id @default(cuid())
+  name        String
+  sku         String? // Stock Keeping Unit (barcode)
+  description String?
+  price       Decimal // Use Decimal for money, not Float!
+  costPrice   Decimal? // To calculate profit later
+  stock       Int      @default(0)
+  minStock    Int      @default(5) // Alert when stock is below this
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  saleItems SaleItem[]
+
+  // Ensure SKUs are unique per organization (two orgs can have same SKU, but one org cannot)
+  @@unique([organizationId, sku])
 }
 
 model Sale {
-  id             String        @id @default(cuid())
+  id          String  @id @default(cuid())
+  totalAmount Decimal
+  status      String  @default("completed") // completed, refunded
+
   organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  createdAt      DateTime      @default(now())
-  items          SaleItem[]
-  total          Decimal       @db.Decimal(10, 2)
-  costTotal      Decimal       @db.Decimal(10, 2)
-  profit         Decimal       @db.Decimal(10, 2)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  userId String // Who sold it?
+  user   User   @relation(fields: [userId], references: [id])
+
+  items SaleItem[]
+
+  createdAt DateTime @default(now())
 }
 
 model SaleItem {
-  id        String   @id @default(cuid())
-  saleId    String
-  sale      Sale     @relation(fields: [saleId], references: [id])
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  id        String  @id @default(cuid())
   quantity  Int
-  unitPrice Decimal  @db.Decimal(10, 2)
-  unitCost  Decimal  @db.Decimal(10, 2)
-  lineTotal Decimal  @db.Decimal(10, 2)
-}
+  unitPrice Decimal // Price at the moment of sale (prices change!)
 
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
