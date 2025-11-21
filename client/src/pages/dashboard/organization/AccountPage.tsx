@@ -1,4 +1,4 @@
-import { AccountSettingsCards } from "@daveyplate/better-auth-ui";
+import { AccountSettingsCards, DeleteAccountCard } from "@daveyplate/better-auth-ui";
 import PageHeader from "@/components/common/PageHeader";
 
 const AccountPage = () => {
@@ -9,6 +9,7 @@ const AccountPage = () => {
         subtitle="Your profile and security"
       />
       <AccountSettingsCards />
+      <DeleteAccountCard/>
     </div>
   );
 };
