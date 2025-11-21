@@ -14,7 +14,7 @@ type LoadingProps = {
 const Loading = ({ size = 20, className = "" }: LoadingProps) => {
   const s = `${size}px`;
   const location = useLocation();
-  if (location.pathname === "/")
+  if (location.pathname === "/" || location.pathname.startsWith("/auth"))
     return (
       <div className="flex items-center justify-center h-screen">
         <span
@@ -27,13 +27,13 @@ const Loading = ({ size = 20, className = "" }: LoadingProps) => {
     );
 
   return (
-    <div className="p-6 grid gap-6 md:grid-cols-4">
+    <div className="p-6 grid gap-6 md:grid-cols-5">
       {/* Sidebar */}
       <aside className="space-y-6 hidden md:block">
         <GenericSidebarSkeleton />
       </aside>
       {/* Main */}
-      <main className="md:col-span-3 space-y-8">
+      <main className="md:col-span-4 space-y-8">
         <GenericHeaderSkeleton />
         <GenericChartsSkeleton />
         <CardsSkeleton />
