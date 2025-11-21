@@ -1,114 +1,172 @@
 import { Router } from "express";
-import { PrismaClient, Prisma } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { Prisma } from "@prisma/client";
+import { prisma } from "../lib/prisma.js";
 export const salesRouter = Router();
 
-salesRouter.post("/", async (req, res) => {
-  const { organizationId, items } = req.body as {
-    organizationId: string;
-    items: {
-      productId: string;
-      quantity: number;
-      unitPrice?: string | number;
-    }[];
-  };
-  if (!organizationId || !items?.length)
-    return res.status(400).json({ error: "Missing fields" });
+// 1. GET /api/sales - List sales history
+salesRouter.get("/", async (req, res) => {
+  const organizationId = req.orgId;
+  if (!organizationId) return res.status(401).json({ error: "Unauthorized" });
 
-  const products = await prisma.product.findMany({
-    where: { id: { in: items.map((i) => i.productId) } },
-  });
-
-  const saleItems = items.map((i) => {
-    const p = products.find((x) => x.id === i.productId)!;
-    const unitCost = p.unitCost; // Prisma.Decimal
-    const unitPrice =
-      i.unitPrice !== undefined ? new Prisma.Decimal(i.unitPrice) : p.unitPrice;
-    const lineTotal = unitPrice.mul(i.quantity);
-    return {
-      productId: p.id,
-      quantity: i.quantity,
-      unitCost,
-      unitPrice,
-      lineTotal,
-    };
-  });
-
-  const costTotal = saleItems.reduce(
-    (acc, i) => acc.add(i.unitCost.mul(i.quantity)),
-    new Prisma.Decimal(0)
-  );
-  const total = saleItems.reduce(
-    (acc, i) => acc.add(i.lineTotal),
-    new Prisma.Decimal(0)
-  );
-  const profit = total.sub(costTotal);
-
-  const sale = await prisma.$transaction(async (tx) => {
-    const s = await tx.sale.create({
-      data: {
-        organizationId,
-        total,
-        costTotal,
-        profit,
-        items: { create: saleItems },
+  try {
+    const sales = await prisma.sale.findMany({
+      where: { organizationId },
+      include: {
+        items: {
+          include: { product: true }, // Include product details for display
+        },
+        user: {
+          select: { name: true, email: true }, // Show who sold it
+        },
       },
-      include: { items: true },
+      orderBy: { createdAt: "desc" },
     });
-    for (const i of saleItems) {
-      await tx.product.update({
-        where: { id: i.productId },
-        data: { quantity: { decrement: i.quantity } },
-      });
-    }
-    return s;
-  });
+    res.json(sales);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch sales" });
+  }
+});
 
-  res.status(201).json(sale);
+// 2. POST /api/sales - Create a new sale (The Complex Part)
+salesRouter.post("/", async (req, res) => {
+  const organizationId = req.orgId;
+  const userId = req.user?.id; // Assuming middleware attaches user
+  const { items } = req.body; // Expecting [{ productId, quantity }]
+
+  if (!organizationId || !userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "No items in sale" });
+  }
+
+  try {
+    // We use a Transaction to ensure data integrity
+    const result = await prisma.$transaction(async (tx) => {
+      let totalAmount = 0;
+      const saleItemsData = [];
+
+      // Loop through every item in the cart
+      for (const item of items) {
+        const { productId, quantity } = item;
+
+        // A. Fetch current product to check stock and price
+        const product = await tx.product.findUnique({
+          where: { id: productId },
+        });
+
+        if (!product) {
+          throw new Error(`Product ${productId} not found`);
+        }
+
+        // B. Security: Ensure product belongs to this org
+        if (product.organizationId !== organizationId) {
+          throw new Error(
+            `Product ${product.name} does not belong to your organization`
+          );
+        }
+
+        // C. Check Stock
+        if (product.stock < quantity) {
+          throw new Error(
+            `Insufficient stock for ${product.name}. Available: ${product.stock}`
+          );
+        }
+
+        // D. Calculate Line Total
+        const unitPrice = Number(product.price);
+        totalAmount += unitPrice * quantity;
+
+        // E. Prepare SaleItem data
+        saleItemsData.push({
+          productId,
+          quantity,
+          unitPrice,
+        });
+
+        // F. DEDUCT STOCK (The most important part!)
+        await tx.product.update({
+          where: { id: productId },
+          data: { stock: { decrement: quantity } },
+        });
+      }
+
+      // G. Create the Sale Record
+      const sale = await tx.sale.create({
+        data: {
+          organizationId,
+          userId,
+          totalAmount,
+          items: {
+            create: saleItemsData,
+          },
+        },
+        include: { items: true },
+      });
+
+      return sale;
+    });
+
+    // If we get here, everything worked!
+    res.status(201).json(result);
+  } catch (error: any) {
+    console.error("Sale failed:", error);
+    // Send the specific error message (like "Insufficient stock") to the client
+    res.status(400).json({ error: error.message || "Transaction failed" });
+  }
 });
 
 salesRouter.get("/summary", async (req, res) => {
-  const { organizationId, period = "daily" } = req.query as {
-    organizationId?: string;
+  const organizationId = req.orgId;
+  const { period = "daily" } = req.query as {
     period?: "daily" | "weekly" | "monthly";
   };
+
+  if (!organizationId) return res.status(401).json({ error: "Unauthorized" });
 
   const since =
     period === "weekly"
       ? new Date(Date.now() - 7 * 864e5)
       : period === "monthly"
-      ? new Date(Date.now() - 30 * 864e5)
-      : new Date(Date.now() - 1 * 864e5);
+        ? new Date(Date.now() - 30 * 864e5)
+        : new Date(Date.now() - 1 * 864e5);
 
-  const whereSale = {
-    createdAt: { gte: since },
-    ...(organizationId ? { organizationId } : {}),
-  };
+  try {
+    const [agg, lowStock] = await Promise.all([
+      prisma.sale.aggregate({
+        where: {
+          organizationId,
+          createdAt: { gte: since },
+        },
+        _sum: { totalAmount: true },
+        _count: { id: true },
+      }),
+      prisma.product.findMany({
+        where: {
+          organizationId,
+          stock: { lte: 5 },
+        },
+        select: { id: true, name: true, stock: true, minStock: true },
+        orderBy: { stock: "asc" },
+        take: 5,
+      }),
+    ]);
 
-  const [agg, lowStock] = await Promise.all([
-    prisma.sale.aggregate({
-      where: whereSale,
-      _sum: { total: true, profit: true },
-      _count: true,
-    }),
-    prisma.product.findMany({
-      where: {
-        ...(organizationId ? { organizationId } : {}),
-        // quantity <= lowStockThreshold
-        // Prisma cannot compare two columns directly; emulate by a simple threshold for MVP:
-        quantity: { lte: 5 },
-      },
-      orderBy: { quantity: "asc" },
-      take: 10,
-    }),
-  ]);
-
-  res.json({
-    period,
-    totalSales: agg._sum.total ?? 0,
-    totalProfit: agg._sum.profit ?? 0,
-    salesCount: agg._count,
-    lowStock,
-  });
+    res.json({
+      period,
+      totalRevenue: Number(agg._sum.totalAmount || 0),
+      salesCount: agg._count.id,
+      lowStock: lowStock.map((p) => ({
+        id: p.id,
+        name: p.name,
+        stock: p.stock,
+        minStock: p.minStock,
+        qty: p.stock, // convenience
+      })),
+    });
+  } catch (error) {
+    console.error("Summary error:", error);
+    res.status(500).json({ error: "Failed to fetch summary" });
+  }
 });
