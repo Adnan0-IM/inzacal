@@ -5,7 +5,10 @@ import {
   getRecentSales as fetchRecentSales,
   getSalesVsExpenses as fetchSalesVsExpenses,
   getTopProducts as fetchTopProducts,
+  getSalesSummary,
 } from "./api";
+import { qk } from "../../lib/queryKeys";
+import type { Period } from "../../lib/types";
 
 export type {
   Summary,
@@ -69,3 +72,12 @@ export function useTopProducts(
     queryFn: () => fetchTopProducts(orgId, from, to, limit),
   });
 }
+
+export const salesSummaryQuery = (
+  orgId: string | undefined,
+  period: Period
+) => ({
+  queryKey: qk.salesSummary(orgId, period),
+  queryFn: () => getSalesSummary(period),
+  enabled: !!orgId,
+});

@@ -1,31 +1,27 @@
 import { api } from "@/lib/http";
-
-export type Period = "daily" | "weekly" | "monthly";
+import type { Period } from "@/lib/types";
 
 export type SalesSummary = {
   period: Period;
-  totalSales: number;
-  totalProfit: number;
+  totalRevenue: number;
   salesCount: number;
   lowStock: {
     id: string;
     name: string;
-    quantity: number;
-    lowStockThreshold: number;
+    stock: number;
+    minStock: number;
+    qty: number;
   }[];
 };
 
-export async function getSalesSummary(
-  organizationId: string,
-  period: Period = "monthly"
-) {
+export async function getSalesSummary(period: Period = "monthly") {
   const { data } = await api.get<SalesSummary>("/sales/summary", {
-    params: { organizationId, period },
+    params: { period },
   });
   return data;
 }
 
-// Shared dashboard types
+// Shared dashboard types (keep if used elsewhere)
 export type Summary = {
   salesToday: number;
   revenueMtd: number;
@@ -44,7 +40,7 @@ export type RecentSale = {
 export type SeriesPoint = { date: string; sales: number; expenses: number };
 export type TopProductPoint = { name: string; revenue: number };
 
-// API functions (axios)
+// Note: endpoints below require server support; keep only if implemented
 export async function getDashboardSummary(
   orgId?: string,
   from?: string,

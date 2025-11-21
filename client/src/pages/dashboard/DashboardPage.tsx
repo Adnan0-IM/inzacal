@@ -1,18 +1,19 @@
-import { useMemo, useState } from "react";
-import { Navigate } from "react-router";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { salesSummaryQuery } from "@/features/dashboard/queries";
+import { useOrganization } from "@/features/dashboard";
 import { useSession } from "@/features/auth/hooks/useSession";
+import { Navigate } from "react-router";
 import PageHeader from "@/components/common/PageHeader";
 import {
   CardsSkeleton,
 } from "@/components/common/Skeleton";
 import EmptyState from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
-import { useOrganization } from "@/features/dashboard/hooks/useOrganization";
 
 type Period = "daily" | "weekly" | "monthly";
 
 const DashboardPage = () => {
-  const { data, isLoading, error } = useSession();
   const [period, setPeriod] = useState<Period>("monthly");
   const {
     activeOrg,
@@ -20,6 +21,15 @@ const DashboardPage = () => {
     organizations,
     isOrganizationsPending,
   } = useOrganization();
+  const {
+    data: session,
+    isLoading: isSessionLoading,
+    error: sessionError,
+  } = useSession();
+
+  const { data: stats, isLoading: isSummaryLoading } = useQuery(
+    salesSummaryQuery(activeOrg?.id, period)
+  );
 
   const noActiveOrgAndNoOrgs = useMemo(
     () => !activeOrg && (organizations?.length ?? 0) === 0,
@@ -27,7 +37,12 @@ const DashboardPage = () => {
   );
 
 
-  if (isLoading || isActiveOrgPending || isOrganizationsPending) {
+  if (
+    isSummaryLoading ||
+    isActiveOrgPending ||
+    isOrganizationsPending ||
+    isSessionLoading
+  ) {
     return (
       <div className="container mx-auto p-6 space-y-8">
         {/* <PageHeaderSkeleton /> */}
@@ -35,33 +50,35 @@ const DashboardPage = () => {
       </div>
     );
   }
-  if (error || !data?.user) return <Navigate to="/auth/sign-in" replace />;
+  if (sessionError || !session?.user)
+    return <Navigate to="/auth/sign-in" replace />;
 
-  const name = data.user.name ?? "guest";
+  const name = session.user.name ?? "guest";
   // const currencyCode = activeOrg?.currency ?? "NGN";
-  const currencyCode = "NGN";
+  const currencyCode = "NGN"
 
-  // TODO: Replace with real queries (key by org + period)
   const summary = {
-    salesToday: 0,
-    revenueMtd: 0,
-    profitMtd: 0,
+    salesToday: stats?.salesCount || 0,
+    revenueMtd: stats?.totalRevenue || 0,
+    profitMtd: 0, // not computed on server yet
     expensesMtd: 0,
-    lowStockCount: 0,
+    lowStockCount: stats?.lowStock?.length || 0,
   };
-  const lowStockItems: { id: string; name: string; qty: number }[] = [];
-  const recentSales: {
-    id: string;
-    ref: string;
-    amount: number;
-    date: string;
-  }[] = [];
+
+  const lowStockItems =
+    stats?.lowStock?.map((i) => ({
+      id: i.id,
+      name: i.name,
+      stock: i.stock,
+      minStock: i.minStock,
+    })) || [];
 
   return (
     <div className="container mx-auto p-6 space-y-8">
       <PageHeader title={name} subtitle="Welcome" />
       {noActiveOrgAndNoOrgs ? (
         /* First-time onboarding (only show when no orgs/sales yet) */
+        <>
         <EmptyState
           title="Create your first organization"
           description="Organizations help you manage members and settings for your business."
@@ -75,6 +92,8 @@ const DashboardPage = () => {
           }}
           isFirstOrg={true}
         />
+{/* <CreateOrganizationForm/> */}
+        </>
       ) : (
         <>
           {/* Filters */}
@@ -161,7 +180,7 @@ const DashboardPage = () => {
                       >
                         <span className="text-sm">{it.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          Qty: {it.qty}
+                          Qty: {it.stock}
                         </span>
                       </li>
                     ))}
@@ -170,43 +189,7 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Recent sales</h3>
-                  <a className="text-xs underline" href="/dashboard/sales">
-                    View all
-                  </a>
-                </div>
-                {recentSales.length === 0 ? (
-                  <EmptyState
-                    title="No sales recorded yet"
-                    description="Record your first sale to see it here."
-                    action={{ to: "/dashboard/sales", label: "Record sale" }}
-                    variant="card"
-                    align="start"
-                  />
-                ) : (
-                  <ul className="divide-y">
-                    {recentSales.map((s) => (
-                      <li
-                        key={s.id}
-                        className="py-2 flex items-center justify-between"
-                      >
-                        <span className="text-sm">{s.ref}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {/* Use org currency */}
-                          {new Intl.NumberFormat(undefined, {
-                            style: "currency",
-                            currency: currencyCode,
-                          }).format(s.amount)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+          
           </section>
         </>
       )}
@@ -240,3 +223,40 @@ function Kpi({
 }
 
 export default DashboardPage;
+  // <Card>
+  //             <CardContent className="p-4 space-y-3">
+  //               <div className="flex items-center justify-between">
+  //                 <h3 className="font-semibold">Recent sales</h3>
+  //                 <a className="text-xs underline" href="/dashboard/sales">
+  //                   View all
+  //                 </a>
+  //               </div>
+  //               {recentSales.length === 0 ? (
+  //                 <EmptyState
+  //                   title="No sales recorded yet"
+  //                   description="Record your first sale to see it here."
+  //                   action={{ to: "/dashboard/sales", label: "Record sale" }}
+  //                   variant="card"
+  //                   align="start"
+  //                 />
+  //               ) : (
+  //                 <ul className="divide-y">
+  //                   {recentSales.map((s) => (
+  //                     <li
+  //                       key={s.id}
+  //                       className="py-2 flex items-center justify-between"
+  //                     >
+  //                       <span className="text-sm">{s.ref}</span>
+  //                       <span className="text-xs text-muted-foreground">
+  //                         {/* Use org currency */}
+  //                         {new Intl.NumberFormat(undefined, {
+  //                           style: "currency",
+  //                           currency: currencyCode,
+  //                         }).format(s.amount)}
+  //                       </span>
+  //                     </li>
+  //                   ))}
+  //                 </ul>
+  //               )}
+  //             </CardContent>
+  //           </Card>
