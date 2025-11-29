@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getLowStockProducts, LowStockItem } from "./api";
+import { getLowStockProducts, type LowStockItem } from "./api";
 
 export function useLowStockProducts(limit = 10) {
   return useQuery<LowStockItem[]>({
