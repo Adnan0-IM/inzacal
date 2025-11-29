@@ -7,6 +7,7 @@ import PageHeader from "@/components/common/PageHeader";
 import { CardsSkeleton } from "@/components/common/Skeleton";
 import EmptyState from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
+import { useLowStockProducts } from "@/features/products/queries";
 
 type Period = "daily" | "weekly" | "monthly";
 
@@ -26,6 +27,7 @@ const DashboardPage = () => {
 
   // Replace salesSummaryQuery with analytics summary
   const { data: summary, isLoading: isSummaryLoading } = useAnalyticsSummary();
+  const { data: lowStock = [], isLoading: lowLoading } = useLowStockProducts(8);
 
   const noActiveOrgAndNoOrgs = useMemo(
     () => !activeOrg && (organizations?.length ?? 0) === 0,
@@ -61,12 +63,6 @@ const DashboardPage = () => {
     lowStockCount: summary?.lowStockCount ?? 0,
   };
 
-  const lowStockItems: {
-    id: string;
-    name: string;
-    stock: number;
-    minStock: number;
-  }[] = [];
 
   return (
     <div className="container mx-auto p-6 space-y-8">
@@ -146,43 +142,37 @@ const DashboardPage = () => {
 
           {/* Actionables */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Low stock</h3>
-                  <span className="text-xs text-muted-foreground">
-                    {summary.lowStockCount} items
-                  </span>
-                </div>
-                {lowStockItems.length === 0 ? (
-                  <EmptyState
-                    title="No low-stock items"
-                    description="You're all stocked up. Add reorder points to track items."
-                    action={{
-                      to: "/dashboard/inventory",
-                      label: "Go to inventory",
-                    }}
-                    variant="card"
-                    align="start"
-                  />
-                ) : (
-                  <ul className="divide-y">
-                    {lowStockItems.map((it) => (
-                      <li
-                        key={it.id}
-                        className="py-2 flex items-center justify-between"
-                      >
-                        <span className="text-sm">{it.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          Qty: {it.stock}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </section>
+  <Card>
+    <CardContent className="p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Low stock</h3>
+        <a className="text-xs underline" href="/dashboard/inventory">Manage</a>
+      </div>
+      {lowLoading ? (
+        <div className="text-sm text-muted-foreground">Loading…</div>
+      ) : lowStock.length === 0 ? (
+        <EmptyState
+          title="All good"
+          description="No products are below minimum stock."
+          variant="card"
+          align="start"
+        />
+      ) : (
+        <ul className="divide-y">
+          {lowStock.map((p) => (
+            <li key={p.id} className="py-2 flex items-center justify-between text-sm">
+              <span>{p.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {p.stock} / min {p.minStock}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </CardContent>
+  </Card>
+</section>
+
         </>
       )}
     </div>
