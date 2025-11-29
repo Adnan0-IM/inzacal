@@ -13,7 +13,6 @@ RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists
 COPY server/package*.json ./
 RUN npm ci
 COPY server .
-RUN npx prisma generate
 RUN npm run build
 
 # 3) Runtime image
@@ -37,5 +36,5 @@ COPY --from=client-builder /client/dist ./client/dist
 COPY --from=client-builder /client/dist /client/dist
 
 EXPOSE 3000
-# Run migrations then start the server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/api/index.js"]
+# Use runtime DATABASE_URL provided by Railway
+CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/src/index.js"]
