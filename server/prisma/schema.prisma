@@ -93,26 +93,30 @@ model TwoFactor {
 }
 
 model Organization {
-  id          String       @id
-  name        String
-  slug        String
-  logo        String?
-  createdAt   DateTime
-  metadata    String?
-  /* Start  */
-  currency    String?
-  address     String?
-  taxId       String?
-  phone       String?
-  website     String?
-  industry    String?
-  timezone    String?      @default("UTC")
-  fiscalYearStart Int?     // 1-12 month number when fiscal year starts
-  /* End */
-  members     Member[]
-  invitations Invitation[]
-  products    Product[]
-  sales       Sale[]
+  id              String       @id
+  name            String
+  slug            String
+  logo            String?
+  createdAt       DateTime
+  metadata        String?
+  /**
+   * Start
+   */
+  currency        String?
+  address         String?
+  taxId           String?
+  phone           String?
+  website         String?
+  industry        String?
+  timezone        String?      @default("UTC")
+  fiscalYearStart Int? // 1-12 month number when fiscal year starts
+  /**
+   * End
+   */
+  members         Member[]
+  invitations     Invitation[]
+  products        Product[]
+  sales           Sale[]
 
   @@unique([slug])
   @@map("organization")
@@ -215,14 +219,15 @@ model SaleItem {
 }
 
 model Expense {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
-  description String
-  category    String
-  amount      Decimal
-  currency    String   @default("NGN")
-  occurredOn   DateTime
-  userId      String?
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  description    String
+  category       String
+  amount         Decimal
+  currency       String   @default("NGN")
+  occurredOn     DateTime
+  organizationId String
+  userId         String?
 }
 
 model TaxRule {

@@ -9,9 +9,10 @@ type User = {
   email: string;
   emailVerified: boolean;
   name: string;
-  image?: string | null | undefined;
-  twoFactorEnabled: boolean | null | undefined;
+  image?: string | null;
+  twoFactorEnabled: boolean | null;
 };
+
 declare global {
   namespace Express {
     interface Request {
@@ -21,22 +22,20 @@ declare global {
   }
 }
 
-async function authorized(req: Request, res: Response, next: NextFunction) {
+export async function authorized(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
   });
-
   if (!session || !session.session.activeOrganizationId) {
     return res
       .status(401)
-      .json({ error: "Unauthorized or no active organaization" });
+      .json({ error: "Unauthorized or no active organization" });
   }
-  const orgId = session.session.activeOrganizationId;
-  const user = session.user;
-  req.orgId = orgId;
-  req.user = user;
-
+  req.orgId = session.session.activeOrganizationId;
+  req.user = session.user;
   next();
 }
-
-export const authorized;

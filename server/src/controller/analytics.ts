@@ -17,7 +17,7 @@ export const analyticsSummary = async (req: Request, res: Response) => {
       select: { id: true, stock: true, minStock: true },
     });
     const lowStockCount = lowStockProducts.filter(
-      (p) => (p.stock ?? 0) <= (p.minStock ?? 0),
+      (p) => (p.stock ?? 0) <= (p.minStock ?? 0)
     ).length;
 
     const totalProducts = await prisma.product.count({
@@ -29,9 +29,9 @@ export const analyticsSummary = async (req: Request, res: Response) => {
       where: { organizationId },
       _sum: { amount: true },
     });
-    const expensesTotal = expensesAgg._sum.amount ?? 0;
+    const expensesTotal = Number(expensesAgg._sum.amount ?? 0);
 
-    // Cost of goods sold (using SaleLineItem.unitCost or Product.costPrice fallback)
+    // COGS from SaleLineItem (fallback to Product.costPrice)
     const lineItems = await prisma.saleLineItem.findMany({
       where: { sale: { organizationId } },
       select: {
@@ -42,22 +42,21 @@ export const analyticsSummary = async (req: Request, res: Response) => {
     });
     let cogs = 0;
     for (const li of lineItems) {
-      const cost = li.unitCost ?? li.product.costPrice ?? 0;
-      cogs += Number(cost) * li.quantity;
+      const cost = Number(li.unitCost ?? li.product.costPrice ?? 0);
+      cogs += cost * li.quantity;
     }
-
     const revenue = Number(sales._sum.totalAmount ?? 0);
     const grossProfit = revenue - cogs;
-    const netProfit = grossProfit - Number(expensesTotal);
+    const netProfit = grossProfit - expensesTotal;
 
-    res.json({
+    return res.json({
       totalRevenue: revenue,
       totalSales: sales._count.id,
       lowStockCount,
       totalProducts,
       grossProfit,
       netProfit,
-      expensesTotal: Number(expensesTotal),
+      expensesTotal,
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch analytics" });

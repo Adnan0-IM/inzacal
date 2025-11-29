@@ -5,14 +5,15 @@ export const getExpenses = async (req: Request, res: Response) => {
   if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
   const { from, to } = req.query;
   const where: any = { organizationId: req.orgId };
-  if (from && to)
-    where.occurrdOn = {
+  if (from && to) {
+    where.occurredOn = {
       gte: new Date(String(from)),
       lte: new Date(String(to)),
     };
+  }
   const expenses = await prisma.expense.findMany({
     where,
-    orderBy: { occurrdOn: "desc" },
+    orderBy: { occurredOn: "desc" },
   });
   res.json(expenses);
 };
@@ -23,10 +24,10 @@ export const createExpenses = async (req: Request, res: Response) => {
     description,
     category,
     amount,
-    occurrdOn,
+    occurredOn,
     currency = "NGN",
   } = req.body ?? {};
-  if (!description || !category || !amount || !occurrdOn) {
+  if (!description || !category || !amount || !occurredOn) {
     return res.status(400).json({ error: "Missing fields" });
   }
   const expense = await prisma.expense.create({
@@ -35,10 +36,10 @@ export const createExpenses = async (req: Request, res: Response) => {
       category,
       amount,
       currency,
-      occurrdOn: new Date(occurrdOn),
-      userId: req.user?.id,
+      occurredOn: new Date(occurredOn),
       organizationId: req.orgId,
-    } as any, // add organizationId in schema if missing
+      userId: req.user?.id,
+    },
   });
   res.status(201).json(expense);
 };

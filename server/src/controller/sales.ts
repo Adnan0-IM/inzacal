@@ -83,14 +83,14 @@ export const createSale = async (req: Request, res: Response) => {
         // B. Security: Ensure product belongs to this org
         if (product.organizationId !== organizationId) {
           throw new Error(
-            `Product ${product.name} does not belong to your organization`,
+            `Product ${product.name} does not belong to your organization`
           );
         }
 
         // C. Check Stock
         if (product.stock < quantity) {
           throw new Error(
-            `Insufficient stock for ${product.name}. Available: ${product.stock}`,
+            `Insufficient stock for ${product.name}. Available: ${product.stock}`
           );
         }
 
@@ -123,6 +123,26 @@ export const createSale = async (req: Request, res: Response) => {
           },
         },
         include: { items: true },
+      });
+
+      // New code to create sale line items
+      const productsMap = Object.fromEntries(
+        saleItemsData.map((item) => [item.productId, item])
+      );
+      const lineItemsData = items.map((i) => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        unitCost: productsMap[i.productId]?.costPrice ?? 0, // capture cost snapshot
+      }));
+      await prisma.saleLineItem.createMany({
+        data: lineItemsData.map((li) => ({
+          saleId: sale.id,
+          productId: li.productId,
+          quantity: li.quantity,
+          unitPrice: li.unitPrice,
+          unitCost: li.unitCost,
+        })),
       });
 
       return sale;
