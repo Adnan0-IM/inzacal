@@ -1,7 +1,7 @@
 import express from "express";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth.js";
-import {authorized} from "./middleware/auth.js"
+import { authorized } from "./middleware/auth.js";
 import { analyticsRouter } from "./routes/analytics.js";
 import { productsRouter } from "./routes/products.js";
 import { salesRouter } from "./routes/sales.js";
