@@ -1,13 +1,10 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { salesSummaryQuery } from "@/features/dashboard/queries";
+import { useAnalyticsSummary } from "@/features/analytics/queries";
 import { useOrganization } from "@/features/dashboard";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { Navigate } from "react-router";
 import PageHeader from "@/components/common/PageHeader";
-import {
-  CardsSkeleton,
-} from "@/components/common/Skeleton";
+import { CardsSkeleton } from "@/components/common/Skeleton";
 import EmptyState from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -27,15 +24,13 @@ const DashboardPage = () => {
     error: sessionError,
   } = useSession();
 
-  const { data: stats, isLoading: isSummaryLoading } = useQuery(
-    salesSummaryQuery(activeOrg?.id, period)
-  );
+  // Replace salesSummaryQuery with analytics summary
+  const { data: summary, isLoading: isSummaryLoading } = useAnalyticsSummary();
 
   const noActiveOrgAndNoOrgs = useMemo(
     () => !activeOrg && (organizations?.length ?? 0) === 0,
     [activeOrg, organizations]
   );
-
 
   if (
     isSummaryLoading ||
@@ -55,23 +50,23 @@ const DashboardPage = () => {
 
   const name = session.user.name ?? "guest";
   // const currencyCode = activeOrg?.currency ?? "NGN";
-  const currencyCode = "NGN"
+  const currencyCode = "NGN";
 
-  const summary = {
-    salesToday: stats?.salesCount || 0,
-    revenueMtd: stats?.totalRevenue || 0,
-    profitMtd: 0, // not computed on server yet
-    expensesMtd: 0,
-    lowStockCount: stats?.lowStock?.length || 0,
+  // Derive fields from analytics summary
+  const kpis = {
+    salesToday: summary?.totalSales ?? 0, // you can adjust to daily later
+    revenueMtd: summary?.totalRevenue ?? 0,
+    profitMtd: summary?.grossProfit ?? 0, // or netProfit depending on your KPI
+    expensesMtd: summary?.expensesTotal ?? 0,
+    lowStockCount: summary?.lowStockCount ?? 0,
   };
 
-  const lowStockItems =
-    stats?.lowStock?.map((i) => ({
-      id: i.id,
-      name: i.name,
-      stock: i.stock,
-      minStock: i.minStock,
-    })) || [];
+  const lowStockItems: {
+    id: string;
+    name: string;
+    stock: number;
+    minStock: number;
+  }[] = [];
 
   return (
     <div className="container mx-auto p-6 space-y-8">
@@ -79,20 +74,20 @@ const DashboardPage = () => {
       {noActiveOrgAndNoOrgs ? (
         /* First-time onboarding (only show when no orgs/sales yet) */
         <>
-        <EmptyState
-          title="Create your first organization"
-          description="Organizations help you manage members and settings for your business."
-          secondary={{
-            to: "/account/organizations",
-            label: "Open organizations page",
-          }}
-          action={{
-            to: "/account/organizations",
-            label: "Create organization",
-          }}
-          isFirstOrg={true}
-        />
-{/* <CreateOrganizationForm/> */}
+          <EmptyState
+            title="Create your first organization"
+            description="Organizations help you manage members and settings for your business."
+            secondary={{
+              to: "/account/organizations",
+              label: "Open organizations page",
+            }}
+            action={{
+              to: "/account/organizations",
+              label: "Create organization",
+            }}
+            isFirstOrg={true}
+          />
+          {/* <CreateOrganizationForm/> */}
         </>
       ) : (
         <>
@@ -107,25 +102,24 @@ const DashboardPage = () => {
               <option value="weekly">This week</option>
               <option value="monthly">This month</option>
             </select>
-
           </div>
 
           {/* KPIs */}
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <Kpi title="Sales today" value={summary.salesToday} />
+            <Kpi title="Sales today" value={kpis.salesToday} />
             <Kpi
               title="Revenue (MTD)"
-              value={summary.revenueMtd}
+              value={kpis.revenueMtd}
               currencyCode={currencyCode}
             />
             <Kpi
               title="Profit (MTD)"
-              value={summary.profitMtd}
+              value={kpis.profitMtd}
               currencyCode={currencyCode}
             />
             <Kpi
               title="Expenses (MTD)"
-              value={summary.expensesMtd}
+              value={kpis.expensesMtd}
               currencyCode={currencyCode}
             />
           </section>
@@ -188,8 +182,6 @@ const DashboardPage = () => {
                 )}
               </CardContent>
             </Card>
-
-          
           </section>
         </>
       )}
@@ -223,40 +215,40 @@ function Kpi({
 }
 
 export default DashboardPage;
-  // <Card>
-  //             <CardContent className="p-4 space-y-3">
-  //               <div className="flex items-center justify-between">
-  //                 <h3 className="font-semibold">Recent sales</h3>
-  //                 <a className="text-xs underline" href="/dashboard/sales">
-  //                   View all
-  //                 </a>
-  //               </div>
-  //               {recentSales.length === 0 ? (
-  //                 <EmptyState
-  //                   title="No sales recorded yet"
-  //                   description="Record your first sale to see it here."
-  //                   action={{ to: "/dashboard/sales", label: "Record sale" }}
-  //                   variant="card"
-  //                   align="start"
-  //                 />
-  //               ) : (
-  //                 <ul className="divide-y">
-  //                   {recentSales.map((s) => (
-  //                     <li
-  //                       key={s.id}
-  //                       className="py-2 flex items-center justify-between"
-  //                     >
-  //                       <span className="text-sm">{s.ref}</span>
-  //                       <span className="text-xs text-muted-foreground">
-  //                         {/* Use org currency */}
-  //                         {new Intl.NumberFormat(undefined, {
-  //                           style: "currency",
-  //                           currency: currencyCode,
-  //                         }).format(s.amount)}
-  //                       </span>
-  //                     </li>
-  //                   ))}
-  //                 </ul>
-  //               )}
-  //             </CardContent>
-  //           </Card>
+// <Card>
+//             <CardContent className="p-4 space-y-3">
+//               <div className="flex items-center justify-between">
+//                 <h3 className="font-semibold">Recent sales</h3>
+//                 <a className="text-xs underline" href="/dashboard/sales">
+//                   View all
+//                 </a>
+//               </div>
+//               {recentSales.length === 0 ? (
+//                 <EmptyState
+//                   title="No sales recorded yet"
+//                   description="Record your first sale to see it here."
+//                   action={{ to: "/dashboard/sales", label: "Record sale" }}
+//                   variant="card"
+//                   align="start"
+//                 />
+//               ) : (
+//                 <ul className="divide-y">
+//                   {recentSales.map((s) => (
+//                     <li
+//                       key={s.id}
+//                       className="py-2 flex items-center justify-between"
+//                     >
+//                       <span className="text-sm">{s.ref}</span>
+//                       <span className="text-xs text-muted-foreground">
+//                         {/* Use org currency */}
+//                         {new Intl.NumberFormat(undefined, {
+//                           style: "currency",
+//                           currency: currencyCode,
+//                         }).format(s.amount)}
+//                       </span>
+//                     </li>
+//                   ))}
+//                 </ul>
+//               )}
+//             </CardContent>
+//           </Card>

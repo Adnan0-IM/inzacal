@@ -8,5 +8,8 @@ export const analyticsSummary = async () => {
     totalSales: number;
     lowStockCount: number;
     totalProducts: number;
+    grossProfit: number;      // added
+    netProfit: number;        // added
+    expensesTotal: number;    // added
   };
 };
