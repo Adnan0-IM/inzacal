@@ -2,40 +2,29 @@ import "dotenv/config";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { organization, twoFactor } from "better-auth/plugins";
-import { Resend } from "resend";
-import { emailVerification } from "../email/template.js";
 import { prisma, initDB } from "./prisma.js";
+import { verificationEmail } from "../services/email/verificationEmail.js";
 
 // Kick off connection in background (handles cold-start/sleep)
 initDB().catch((e) => {
   console.warn("DB init retrying later:", e?.code ?? e?.message ?? e);
 });
 
-const resendApiKey = process.env.RESEND_API_KEY;
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
-
-const FROM_EMAIL = process.env.RESEND_FROM ?? "onboarding@resend.dev";
-const SITE_NAME = process.env.SITE_NAME ?? "Inzacal";
-const EMAIL_DELIVERY_DISABLED =
-  process.env.EMAIL_DELIVERY_DISABLED === "1" ||
-  process.env.NODE_ENV !== "production";
-
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   trustedOrigins: [
     "http://localhost:5173",
-    "https://inzacal.vercel.app",
     "https://inzacal-production.up.railway.app",
   ],
   plugins: [twoFactor(), organization()],
   user: {
-    deleteUser:{
-      enabled: true
+    deleteUser: {
+      enabled: true,
     },
     changeEmail: {
-      enabled: true
-    }
+      enabled: false,
+    },
   },
   emailAndPassword: {
     enabled: true,
@@ -53,41 +42,7 @@ export const auth = betterAuth({
         }
       : {},
   emailVerification: {
-    sendVerificationEmail: async ({ user, url }) => {
-      const name = user.name || user.email.split("@")[0];
-      const email = user.email;
-
-      if (EMAIL_DELIVERY_DISABLED || !resend) {
-        console.warn(
-          "Email delivery disabled in this environment; verification link:",
-          url
-        );
-        return;
-      }
-
-      try {
-        const html = emailVerification(name, email, url, SITE_NAME);
-        const result = await resend.emails.send({
-          from: `${SITE_NAME} <${FROM_EMAIL}>`,
-          to: user.email,
-          subject: `Verify your ${SITE_NAME} email`,
-          html,
-        });
-        if (result.error) {
-          console.error("Resend error:", result.error);
-          if (process.env.NODE_ENV === "production") {
-            throw new Error(result.error.message || "Failed to queue email");
-          } else {
-            console.warn("Skipping email error in non-production.");
-          }
-        } else {
-          console.log("Verification email queued. id:", result.data?.id);
-        }
-      } catch (err: any) {
-        console.error("Failed to send verification email:", err);
-        if (process.env.NODE_ENV === "production") throw err;
-      }
-    },
+    sendVerificationEmail: ({ user, url }) => verificationEmail(user, url),
     autoSignInAfterVerification: true,
     sendOnSignUp: true,
   },

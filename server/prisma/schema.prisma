@@ -96,17 +96,19 @@ model Organization {
   id          String       @id
   name        String
   slug        String
-  // currency    String
-  // address     String
   logo        String?
   createdAt   DateTime
   metadata    String?
-  // taxId       String?
-  // phone       String?
-  // website     String?
-  // industry    String?
-  // timezone    String?      @default("UTC")
-  // fiscalYearStart Int?     // 1-12 month number when fiscal year starts
+  /* Start  */
+  currency    String?
+  address     String?
+  taxId       String?
+  phone       String?
+  website     String?
+  industry    String?
+  timezone    String?      @default("UTC")
+  fiscalYearStart Int?     // 1-12 month number when fiscal year starts
+  /* End */
   members     Member[]
   invitations Invitation[]
   products    Product[]
@@ -158,7 +160,9 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  saleItems SaleItem[]
+  saleItems     SaleItem[]
+  saleLineItems SaleLineItem[]
+  productStocks ProductStock[]
 
   // Ensure SKUs are unique per organization (two orgs can have same SKU, but one org cannot)
   @@unique([organizationId, sku])
@@ -177,7 +181,25 @@ model Sale {
 
   items SaleItem[]
 
-  createdAt DateTime @default(now())
+  customerId String?
+  locationId String?
+  taxAmount  Decimal?
+  currency   String         @default("NGN")
+  customer   Customer?      @relation(fields: [customerId], references: [id])
+  location   Location?      @relation(fields: [locationId], references: [id])
+  lineItems  SaleLineItem[]
+  createdAt  DateTime       @default(now())
+}
+
+model SaleLineItem {
+  id        String   @id @default(cuid())
+  saleId    String
+  productId String
+  quantity  Int
+  unitPrice Decimal
+  unitCost  Decimal?
+  sale      Sale     @relation(fields: [saleId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
 }
 
 model SaleItem {
@@ -190,4 +212,78 @@ model SaleItem {
 
   productId String
   product   Product @relation(fields: [productId], references: [id])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  description String
+  category    String
+  amount      Decimal
+  currency    String   @default("NGN")
+  occurredOn   DateTime
+  userId      String?
+}
+
+model TaxRule {
+  id            String   @id @default(cuid())
+  jurisdiction  String
+  type          String
+  rate          Decimal
+  effectiveFrom DateTime
+  effectiveTo   DateTime
+  createdAt     DateTime @default(now())
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  city      String?
+  country   String?
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+  sales     Sale[]
+}
+
+model Location {
+  id        String         @id @default(cuid())
+  name      String
+  address   String?
+  lat       Float?
+  lng       Float?
+  createdAt DateTime       @default(now())
+  products  ProductStock[]
+  sales     Sale[]
+}
+
+model ProductStock {
+  id         String   @id @default(cuid())
+  productId  String
+  locationId String
+  quantity   Int
+  updatedAt  DateTime @default(now())
+  product    Product  @relation(fields: [productId], references: [id])
+  location   Location @relation(fields: [locationId], references: [id])
+
+  @@unique([productId, locationId])
+}
+
+model FxRate {
+  id        String   @id @default(cuid())
+  base      String
+  quote     String
+  rate      Decimal
+  fetchedAt DateTime @default(now())
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String?
+  type      String
+  payload   Json
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
 }
