@@ -105,3 +105,18 @@ export const deleteProducts = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to delete product" });
   }
 };
+
+export const getLowStockProducts = async (req, res) => {
+  const limit = Number(req.query.limit ?? 10);
+  const orgId = req.orgId!;
+  const all = await prisma.product.findMany({
+    where: { organizationId: orgId },
+    select: { id: true, name: true, stock: true, minStock: true },
+  });
+  // Prisma can't compare two columns in where; filter in JS
+  const low = all
+    .filter((p) => p.stock <= p.minStock)
+    .sort((a, b) => a.stock - a.minStock - (b.stock - b.minStock))
+    .slice(0, limit);
+  res.json(low);
+}

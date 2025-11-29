@@ -6,6 +6,7 @@ import {
   getProducts,
   updateProduct,
 } from "../controller/products.js";
+import { prisma } from "../lib/prisma.js";
 
 export const productsRouter = Router();
 
@@ -18,3 +19,5 @@ productsRouter.post("/", createProduct);
 productsRouter.put("/:id", updateProduct);
 
 productsRouter.delete("/:id", deleteProducts);
+
+productsRouter.get("/low-stock", getLowStockProducts);
