@@ -8,10 +8,14 @@ import { CardsSkeleton } from "@/components/common/Skeleton";
 import EmptyState from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLowStockProducts } from "@/features/products/queries";
+import { useLocation } from "@/hooks/use-location";
+import { useAddress } from "@/hooks/use-address";
 
 type Period = "daily" | "weekly" | "monthly";
 
 const DashboardPage = () => {
+  const location = useLocation();
+  console.log(location);
   const [period, setPeriod] = useState<Period>("monthly");
   const {
     activeOrg,
@@ -24,6 +28,7 @@ const DashboardPage = () => {
     isLoading: isSessionLoading,
     error: sessionError,
   } = useSession();
+  const { address: addr, loading: addrLoading } = useAddress();
 
   // Replace salesSummaryQuery with analytics summary
   const { data: summary, isLoading: isSummaryLoading } = useAnalyticsSummary();
@@ -62,11 +67,16 @@ const DashboardPage = () => {
     expensesMtd: summary?.expensesTotal ?? 0,
     lowStockCount: summary?.lowStockCount ?? 0,
   };
-
-
   return (
     <div className="container mx-auto p-6 space-y-8">
       <PageHeader title={name} subtitle="Welcome" />
+      <div className="text-xs text-muted-foreground">
+        {addrLoading
+          ? "Resolving address…"
+          : addr?.display
+            ? `Approx. location: ${addr.display}`
+            : null}
+      </div>
       {noActiveOrgAndNoOrgs ? (
         /* First-time onboarding (only show when no orgs/sales yet) */
         <>
@@ -142,37 +152,41 @@ const DashboardPage = () => {
 
           {/* Actionables */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <Card>
-    <CardContent className="p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Low stock</h3>
-        <a className="text-xs underline" href="/dashboard/inventory">Manage</a>
-      </div>
-      {lowLoading ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
-      ) : lowStock.length === 0 ? (
-        <EmptyState
-          title="All good"
-          description="No products are below minimum stock."
-          variant="card"
-          align="start"
-        />
-      ) : (
-        <ul className="divide-y">
-          {lowStock.map((p) => (
-            <li key={p.id} className="py-2 flex items-center justify-between text-sm">
-              <span>{p.name}</span>
-              <span className="text-xs text-muted-foreground">
-                {p.stock} / min {p.minStock}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </CardContent>
-  </Card>
-</section>
-
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">Low stock</h3>
+                  <a className="text-xs underline" href="/dashboard/inventory">
+                    Manage
+                  </a>
+                </div>
+                {lowLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading…</div>
+                ) : lowStock.length === 0 ? (
+                  <EmptyState
+                    title="All good"
+                    description="No products are below minimum stock."
+                    variant="card"
+                    align="start"
+                  />
+                ) : (
+                  <ul className="divide-y">
+                    {lowStock.map((p) => (
+                      <li
+                        key={p.id}
+                        className="py-2 flex items-center justify-between text-sm"
+                      >
+                        <span>{p.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {p.stock} / min {p.minStock}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </section>
         </>
       )}
     </div>
