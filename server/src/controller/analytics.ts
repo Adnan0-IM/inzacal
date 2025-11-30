@@ -17,7 +17,8 @@ export const analyticsSummary = async (req: Request, res: Response) => {
       select: { id: true, stock: true, minStock: true },
     });
     const lowStockCount = lowStockProducts.filter(
-      (p) => (p.stock ?? 0) <= (p.minStock ?? 0)
+      (p: { id: string; stock: number; minStock: number }) =>
+        (p.stock ?? 0) <= (p.minStock ?? 0)
     ).length;
 
     const totalProducts = await prisma.product.count({
