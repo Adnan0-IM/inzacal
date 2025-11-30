@@ -9,8 +9,8 @@ type User = {
   email: string;
   emailVerified: boolean;
   name: string;
-  image?: string | null;
-  twoFactorEnabled: boolean | null;
+  image?: string | null | undefined;
+  twoFactorEnabled: boolean | null | undefined;
 };
 
 declare global {
@@ -35,7 +35,7 @@ export async function authorized(
       .status(401)
       .json({ error: "Unauthorized or no active organization" });
   }
-  req.orgId = session.session.activeOrganizationId;
   req.user = session.user;
+  req.orgId = session.session.activeOrganizationId;
   next();
 }

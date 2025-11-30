@@ -19,7 +19,8 @@ export const getExpenses = async (req: Request, res: Response) => {
 };
 
 export const createExpenses = async (req: Request, res: Response) => {
-  if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
+  if (!req.orgId) return res.status(401).json({ error: "Organization id is required" });
+  if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
   const {
     description,
     category,

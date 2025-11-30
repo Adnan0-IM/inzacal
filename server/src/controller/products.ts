@@ -106,7 +106,7 @@ export const deleteProducts = async (req: Request, res: Response) => {
   }
 };
 
-export const getLowStockProducts = async (req, res) => {
+export const getLowStockProducts = async (req: Request, res: Response) => {
   const orgId = req.orgId;
   if (!orgId) return res.status(401).json({ error: "Unauthorized" });
   const { limit = "10" } = req.query;

@@ -10,7 +10,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-
 }
 
 model User {
@@ -117,6 +116,8 @@ model Organization {
   invitations     Invitation[]
   products        Product[]
   sales           Sale[]
+  customers       Customer[]
+  locations       Location[]
 
   @@unique([slug])
   @@map("organization")
@@ -198,12 +199,12 @@ model Sale {
 model SaleLineItem {
   id        String   @id @default(cuid())
   saleId    String
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
   productId String
+  product   Product  @relation(fields: [productId], references: [id])
   quantity  Int
   unitPrice Decimal
   unitCost  Decimal?
-  sale      Sale     @relation(fields: [saleId], references: [id])
-  product   Product  @relation(fields: [productId], references: [id])
 }
 
 model SaleItem {
@@ -241,27 +242,35 @@ model TaxRule {
 }
 
 model Customer {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  city      String?
-  country   String?
-  lat       Float?
-  lng       Float?
-  createdAt DateTime @default(now())
-  sales     Sale[]
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String?
+  city           String?
+  country        String?
+  lat            Float?
+  lng            Float?
+  createdAt      DateTime     @default(now())
+  sales          Sale[]
+
+  @@index([organizationId, name])
 }
 
 model Location {
-  id        String         @id @default(cuid())
-  name      String
-  address   String?
-  lat       Float?
-  lng       Float?
-  createdAt DateTime       @default(now())
-  products  ProductStock[]
-  sales     Sale[]
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  address        String?
+  lat            Float?
+  lng            Float?
+  createdAt      DateTime       @default(now())
+  sales          Sale[]
+  productStocks  ProductStock[]
+
+  @@index([organizationId, name])
 }
 
 model ProductStock {

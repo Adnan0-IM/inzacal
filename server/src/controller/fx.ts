@@ -30,8 +30,8 @@ export const refreshExchangeRate = async (req: Request, res: Response) => {
 
   const created = [];
 
-  for (const [quote, rate] of entries) {
-    const fx = await prisma.fxRate.create({ data: { base, quote, rate } });
+  for (const [quote, rate] of entries as [string, number][]) {
+    const fx = await prisma.fxRate.create({ data: { base, quote, rate  } });
     created.push(fx);
   }
 
