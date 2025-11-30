@@ -27,7 +27,7 @@ app.use(express.json());
 app.use("/api/auth/", toNodeHandler(auth));
 
 // Protected (needs active organization)
-app.use("/api", authorized, analyticsRouter);
+app.use("/api/analytics", authorized, analyticsRouter);
 app.use("/api/products", authorized, productsRouter);
 app.use("/api/sales", authorized, salesRouter);
 app.use("/api/expenses", authorized, expensesRouter);

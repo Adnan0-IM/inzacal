@@ -13,6 +13,8 @@ export const productsRouter = Router();
 
 productsRouter.get("/", getProducts);
 
+productsRouter.get("/low-stock", getLowStockProducts);
+
 productsRouter.get("/:id", getProduct);
 
 productsRouter.post("/", createProduct);
@@ -20,5 +22,3 @@ productsRouter.post("/", createProduct);
 productsRouter.put("/:id", updateProduct);
 
 productsRouter.delete("/:id", deleteProducts);
-
-productsRouter.get("/low-stock", getLowStockProducts);
