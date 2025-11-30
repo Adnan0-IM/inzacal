@@ -1,5 +1,7 @@
 import type { Response, Request } from "express";
 import { prisma } from "../lib/prisma.js";
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type { DefaultArgs } from "@prisma/client/runtime/client";
 
 export const getSales = async (req: Request, res: Response) => {
   const organizationId = req.orgId;
@@ -61,7 +63,7 @@ export const createSale = async (req: Request, res: Response) => {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
       // Optional validation of customer/location ownership
       if (customerId) {
         const c = await tx.customer.findUnique({ where: { id: customerId } });
