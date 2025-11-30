@@ -22,10 +22,20 @@ export const getCustomer = async (req: Request, res: Response) => {
 };
 
 export const createCustomers = async (req: Request, res: Response) => {
+  if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
   const { name, email, phone, city, country, lat, lng } = req.body ?? {};
   if (!name) return res.status(400).json({ error: "Name required" });
   const customer = await prisma.customer.create({
-    data: { name, email, phone, city, country, lat, lng },
+    data: {
+      name,
+      email,
+      phone,
+      city,
+      country,
+      lat,
+      lng,
+      organizationId: req.orgId,
+    },
   });
   res.status(201).json(customer);
 };
