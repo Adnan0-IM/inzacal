@@ -28,4 +28,4 @@ COPY --from=builder /app/prisma.config.* ./
 ENV PRISMA_CONFIG_PATH=/app/prisma.config.ts
 
 EXPOSE 3000
-CMD ["sh","-c","npx prisma migrate deploy && node dist/src/api/index.js"]
+CMD ["sh","-c","npx prisma migrate deploy && node dist/src/index.js"]
