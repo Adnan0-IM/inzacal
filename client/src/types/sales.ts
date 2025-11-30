@@ -5,6 +5,8 @@ export type SaleItemInput = {
 
 export type CreateSaleInput = {
   items: SaleItemInput[];
+  customerId?: string;
+  locationId?: string;
 };
 
 export type SaleItem = {
