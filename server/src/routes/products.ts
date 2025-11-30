@@ -5,6 +5,7 @@ import {
   getProduct,
   getProducts,
   updateProduct,
+  getLowStockProducts,
 } from "../controller/products.js";
 import { prisma } from "../lib/prisma.js";
 

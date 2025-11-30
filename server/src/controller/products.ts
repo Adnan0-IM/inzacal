@@ -107,16 +107,21 @@ export const deleteProducts = async (req: Request, res: Response) => {
 };
 
 export const getLowStockProducts = async (req, res) => {
-  const limit = Number(req.query.limit ?? 10);
-  const orgId = req.orgId!;
-  const all = await prisma.product.findMany({
-    where: { organizationId: orgId },
+  const orgId = req.orgId;
+  if (!orgId) return res.status(401).json({ error: "Unauthorized" });
+  const { limit = "10" } = req.query;
+  const items = await prisma.product.findMany({
+    where: {
+      organizationId: orgId,
+      stock: { lt: prisma.product.fields.minStock }, // fallback if not supported by client, do manual compare later
+    },
+    orderBy: [{ stock: "asc" }, { updatedAt: "desc" }],
+    take: Number(limit),
     select: { id: true, name: true, stock: true, minStock: true },
   });
-  // Prisma can't compare two columns in where; filter in JS
-  const low = all
-    .filter((p) => p.stock <= p.minStock)
-    .sort((a, b) => a.stock - a.minStock - (b.stock - b.minStock))
-    .slice(0, limit);
-  res.json(low);
+
+  // Prisma cannot compare two fields directly in where; use filter fallback
+  const filtered = items.filter((p) => p.stock < p.minStock);
+
+  res.json(filtered);
 }
