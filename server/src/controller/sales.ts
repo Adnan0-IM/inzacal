@@ -50,109 +50,86 @@ export const getSale = async (req: Request, res: Response) => {
 };
 export const createSale = async (req: Request, res: Response) => {
   const organizationId = req.orgId;
-  const userId = req.user?.id; // Assuming middleware attaches user
-  const { items } = req.body; // Expecting [{ productId, quantity }]
+  const userId = req.user?.id;
+  const { items } = req.body;
 
   if (!organizationId || !userId) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "No items in sale" });
   }
 
   try {
-    // We use a Transaction to ensure data integrity
     const result = await prisma.$transaction(async (tx) => {
       let totalAmount = 0;
-      const saleItemsData = [];
 
-      // Loop through every item in the cart
+      // Keep computed sale item rows and a product map with costPrice
+      const saleItemsData: {
+        productId: string;
+        quantity: number;
+        unitPrice: number;
+      }[] = [];
+      const productMap: Record<string, { costPrice: number }> = {};
+
       for (const item of items) {
         const { productId, quantity } = item;
 
-        // A. Fetch current product to check stock and price
         const product = await tx.product.findUnique({
           where: { id: productId },
         });
+        if (!product) throw new Error(`Product ${productId} not found`);
 
-        if (!product) {
-          throw new Error(`Product ${productId} not found`);
-        }
-
-        // B. Security: Ensure product belongs to this org
         if (product.organizationId !== organizationId) {
           throw new Error(
             `Product ${product.name} does not belong to your organization`
           );
         }
-
-        // C. Check Stock
         if (product.stock < quantity) {
           throw new Error(
             `Insufficient stock for ${product.name}. Available: ${product.stock}`
           );
         }
 
-        // D. Calculate Line Total
         const unitPrice = Number(product.price);
         totalAmount += unitPrice * quantity;
 
-        // E. Prepare SaleItem data
-        saleItemsData.push({
-          productId,
-          quantity,
-          unitPrice,
-        });
+        saleItemsData.push({ productId, quantity, unitPrice });
+        productMap[productId] = { costPrice: Number(product.costPrice ?? 0) };
 
-        // F. DEDUCT STOCK (The most important part!)
         await tx.product.update({
           where: { id: productId },
           data: { stock: { decrement: quantity } },
         });
       }
 
-      // G. Create the Sale Record
       const sale = await tx.sale.create({
         data: {
           organizationId,
           userId,
           totalAmount,
-          items: {
-            create: saleItemsData,
-          },
+          items: { create: saleItemsData }, // existing Sale.items
         },
         include: { items: true },
       });
 
-      // New code to create sale line items
-      const productsMap = Object.fromEntries(
-        saleItemsData.map((item) => [item.productId, item])
-      );
-      const lineItemsData = items.map((i) => ({
-        productId: i.productId,
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        unitCost: productsMap[i.productId]?.costPrice ?? 0, // capture cost snapshot
-      }));
-      await prisma.saleLineItem.createMany({
-        data: lineItemsData.map((li) => ({
+      // Create SaleLineItem snapshots using computed unitPrice and product.costPrice
+      await tx.saleLineItem.createMany({
+        data: saleItemsData.map((li) => ({
           saleId: sale.id,
           productId: li.productId,
           quantity: li.quantity,
-          unitPrice: li.unitPrice,
-          unitCost: li.unitCost,
+          unitPrice: li.unitPrice, // use computed price
+          unitCost: productMap[li.productId]?.costPrice ?? 0, // use product cost snapshot
         })),
       });
 
       return sale;
     });
 
-    // If we get here, everything worked!
     res.status(201).json(result);
   } catch (error: any) {
     console.error("Sale failed:", error);
-    // Send the specific error message (like "Insufficient stock") to the client
     res.status(400).json({ error: error.message || "Transaction failed" });
   }
 };
