@@ -176,13 +176,15 @@ export const salesSummary = async (req: Request, res: Response) => {
       period,
       totalRevenue: Number(agg._sum.totalAmount || 0),
       salesCount: agg._count.id,
-      lowStock: lowStock.map((p) => ({
-        id: p.id,
-        name: p.name,
-        stock: p.stock,
-        minStock: p.minStock,
-        qty: p.stock, // convenience
-      })),
+      lowStock: lowStock.map(
+        (p: { id: string; name: string; stock: number; minStock: number }) => ({
+          id: p.id,
+          name: p.name,
+          stock: p.stock,
+          minStock: p.minStock,
+          qty: p.stock, // convenience
+        })
+      ),
     });
   } catch (error) {
     console.error("Summary error:", error);
