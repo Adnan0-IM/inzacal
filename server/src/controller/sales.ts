@@ -51,7 +51,7 @@ export const getSale = async (req: Request, res: Response) => {
 export const createSale = async (req: Request, res: Response) => {
   const organizationId = req.orgId;
   const userId = req.user?.id;
-  const { items } = req.body;
+  const { items, customerId, locationId } = req.body;
 
   if (!organizationId || !userId) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -62,9 +62,19 @@ export const createSale = async (req: Request, res: Response) => {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      let totalAmount = 0;
+      // Optional validation of customer/location ownership
+      if (customerId) {
+        const c = await tx.customer.findUnique({ where: { id: customerId } });
+        if (!c || c.organizationId !== organizationId)
+          throw new Error("Invalid customer");
+      }
+      if (locationId) {
+        const l = await tx.location.findUnique({ where: { id: locationId } });
+        if (!l || l.organizationId !== organizationId)
+          throw new Error("Invalid location");
+      }
 
-      // Keep computed sale item rows and a product map with costPrice
+      let totalAmount = 0;
       const saleItemsData: {
         productId: string;
         quantity: number;
@@ -74,22 +84,14 @@ export const createSale = async (req: Request, res: Response) => {
 
       for (const item of items) {
         const { productId, quantity } = item;
-
         const product = await tx.product.findUnique({
           where: { id: productId },
         });
         if (!product) throw new Error(`Product ${productId} not found`);
-
-        if (product.organizationId !== organizationId) {
-          throw new Error(
-            `Product ${product.name} does not belong to your organization`
-          );
-        }
-        if (product.stock < quantity) {
-          throw new Error(
-            `Insufficient stock for ${product.name}. Available: ${product.stock}`
-          );
-        }
+        if (product.organizationId !== organizationId)
+          throw new Error("Product not in organization");
+        if (product.stock < quantity)
+          throw new Error(`Insufficient stock for ${product.name}`);
 
         const unitPrice = Number(product.price);
         totalAmount += unitPrice * quantity;
@@ -108,19 +110,20 @@ export const createSale = async (req: Request, res: Response) => {
           organizationId,
           userId,
           totalAmount,
-          items: { create: saleItemsData }, // existing Sale.items
+          customerId: customerId || null,
+          locationId: locationId || null,
+          items: { create: saleItemsData },
         },
         include: { items: true },
       });
 
-      // Create SaleLineItem snapshots using computed unitPrice and product.costPrice
       await tx.saleLineItem.createMany({
         data: saleItemsData.map((li) => ({
           saleId: sale.id,
           productId: li.productId,
           quantity: li.quantity,
-          unitPrice: li.unitPrice, // use computed price
-          unitCost: productMap[li.productId]?.costPrice ?? 0, // use product cost snapshot
+          unitPrice: li.unitPrice,
+          unitCost: productMap[li.productId]?.costPrice ?? 0,
         })),
       });
 
