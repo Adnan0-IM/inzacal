@@ -121,7 +121,10 @@ export const getLowStockProducts = async (req: Request, res: Response) => {
   });
 
   // Prisma cannot compare two fields directly in where; use filter fallback
-  const filtered = items.filter((p) => p.stock < p.minStock);
+  const filtered = items.filter(
+    (p: { name: string; id: string; stock: number; minStock: number }) =>
+      p.stock < p.minStock
+  );
 
   res.json(filtered);
-}
+};
