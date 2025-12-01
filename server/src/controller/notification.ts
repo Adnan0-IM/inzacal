@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 
 export const getNotifications = async (req: Request, res: Response) => {
   const userId = req.user?.id;
-  if (!userId) return res.send(401).json({ error: "User id is required" });
+  if (!userId) return res.status(401).json({ error: "User id is required" });
   const notifications = await prisma.notification.findMany({
     where: { OR: [{ userId }, { userId: null }] },
     orderBy: { createdAt: "desc" },
@@ -14,7 +14,7 @@ export const getNotifications = async (req: Request, res: Response) => {
 
 export const updateNotification = async (req: Request, res: Response) => {
   const { id } = req.params;
-  if (!id) return res.send(401).json({ error: "Id is required" });
+  if (!id) return res.status(401).json({ error: "Id is required" });
   await prisma.notification.update({
     where: { id },
     data: { readAt: new Date() },
