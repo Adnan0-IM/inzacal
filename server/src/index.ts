@@ -10,7 +10,9 @@ import { customersRouter } from "./routes/customers.js";
 import { locationsRouter } from "./routes/locations.js";
 import { fxRouter } from "./routes/fx.js";
 import { notificationsRouter } from "./routes/notifications.js";
+import { reportsRouter } from "./routes/reports.js";
 import { corsRouter } from "./utils/cors.js";
+import { syncPolicyFeed } from "./jobs/policyFeed.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
@@ -22,6 +24,7 @@ app.set("trust proxy", 1);
 app.use("/api", corsRouter);
 
 app.use(express.json());
+app.use(express.static("public"));
 
 // Better Auth
 app.use("/api/auth/", toNodeHandler(auth));
@@ -35,6 +38,7 @@ app.use("/api/customers", authorized, customersRouter);
 app.use("/api/locations", authorized, locationsRouter);
 app.use("/api/fx", authorized, fxRouter);
 app.use("/api/notifications", authorized, notificationsRouter);
+app.use("/api/reports", authorized, reportsRouter);
 
 // Health
 app.get("/health", (_, res) => {
@@ -44,3 +48,6 @@ app.get("/health", (_, res) => {
 app.listen(port, () => {
   console.log(`Better Auth app listening on port ${port}`);
 });
+
+setInterval(syncPolicyFeed, 15 * 60 * 1000); // every 15 minutes
+syncPolicyFeed();

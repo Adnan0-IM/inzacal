@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "updatedAt": "2025-01-01T00:00:00Z",
+  "policies": [
+    {
+      "id": "vat-2025-q1",
+      "title": "VAT rate adjusted to 7.5%",
+      "jurisdiction": "NG",
+      "category": "tax",
+      "effectiveFrom": "2025-01-01",
+      "effectiveTo": null,
+      "details": "Federal VAT rate remains at 7.5%. Ensure invoices and tax reports reflect this rate.",
+      "links": [
+        { "title": "FIRS VAT Guidance", "url": "https://www.firs.gov.ng/vat" }
+      ]
+    },
+    {
+      "id": "withholding-2025",
+      "title": "Withholding tax clarification for services",
+      "jurisdiction": "NG",
+      "category": "tax",
+      "effectiveFrom": "2025-02-01",
+      "effectiveTo": null,
+      "details": "Withholding tax for professional services remains 10%. Applies at payment time.",
+      "links": [
+        {
+          "title": "Policy Notice",
+          "url": "https://example.gov/policy/withholding-2025"
+        }
+      ]
+    },
+    {
+      "id": "fx-advisory-jan-2025",
+      "title": "FX advisory on NGN volatility",
+      "jurisdiction": "NG",
+      "category": "fx",
+      "effectiveFrom": "2025-01-15",
+      "effectiveTo": "2025-03-31",
+      "details": "Businesses are advised to monitor NGN exchange rates for imported goods pricing.",
+      "links": [
+        {
+          "title": "Central Bank Bulletin",
+          "url": "https://cbn.gov.ng/bulletins/fx-jan-2025"
+        }
+      ]
+    }
+  ]
+}

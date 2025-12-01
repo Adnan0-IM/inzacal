@@ -152,48 +152,42 @@ model Invitation {
 model Product {
   id          String   @id @default(cuid())
   name        String
-  sku         String? // Stock Keeping Unit (barcode)
+  sku         String?
   description String?
-  price       Decimal // Use Decimal for money, not Float!
-  costPrice   Decimal? // To calculate profit later
+  price       Decimal
+  costPrice   Decimal?
   stock       Int      @default(0)
-  minStock    Int      @default(5) // Alert when stock is below this
+  minStock    Int      @default(5)
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  saleItems     SaleItem[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   saleLineItems SaleLineItem[]
   productStocks ProductStock[]
 
-  // Ensure SKUs are unique per organization (two orgs can have same SKU, but one org cannot)
   @@unique([organizationId, sku])
 }
 
 model Sale {
-  id          String  @id @default(cuid())
-  totalAmount Decimal
-  status      String  @default("completed") // completed, refunded
-
+  id             String   @id @default(cuid())
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String
+  totalAmount    Decimal
+  createdAt      DateTime @default(now())
 
-  userId String // Who sold it?
-  user   User   @relation(fields: [userId], references: [id])
+  customerId   String?
+  customer     Customer?      @relation(fields: [customerId], references: [id])
+  locationId   String?
+  location     Location?      @relation(fields: [locationId], references: [id])
+  taxAmount    Decimal?
+  currency     String         @default("NGN")
+  items        SaleLineItem[]
+  user         User           @relation(fields: [userId], references: [id])
+  organization Organization   @relation(fields: [organizationId], references: [id])
 
-  items SaleItem[]
-
-  customerId String?
-  locationId String?
-  taxAmount  Decimal?
-  currency   String         @default("NGN")
-  customer   Customer?      @relation(fields: [customerId], references: [id])
-  location   Location?      @relation(fields: [locationId], references: [id])
-  lineItems  SaleLineItem[]
-  createdAt  DateTime       @default(now())
+  @@index([organizationId, createdAt])
 }
 
 model SaleLineItem {
@@ -205,18 +199,6 @@ model SaleLineItem {
   quantity  Int
   unitPrice Decimal
   unitCost  Decimal?
-}
-
-model SaleItem {
-  id        String  @id @default(cuid())
-  quantity  Int
-  unitPrice Decimal // Price at the moment of sale (prices change!)
-
-  saleId String
-  sale   Sale   @relation(fields: [saleId], references: [id])
-
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
 }
 
 model Expense {
@@ -232,13 +214,14 @@ model Expense {
 }
 
 model TaxRule {
-  id            String   @id @default(cuid())
-  jurisdiction  String
-  type          String
-  rate          Decimal
-  effectiveFrom DateTime
-  effectiveTo   DateTime
-  createdAt     DateTime @default(now())
+  id             String    @id @default(cuid())
+  organizationId String
+  jurisdiction   String
+  type           String // e.g., "VAT"
+  rate           Decimal // e.g., 0.075 for 7.5%
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  createdAt      DateTime  @default(now())
 }
 
 model Customer {
