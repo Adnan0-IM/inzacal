@@ -2,61 +2,69 @@ import { useState, useMemo } from "react";
 import { useAnalyticsSummary } from "@/features/analytics/queries";
 import { useOrganization } from "@/features/dashboard";
 import { useSession } from "@/features/auth/hooks/useSession";
-import { Navigate } from "react-router";
 import PageHeader from "@/components/common/PageHeader";
-import { CardsSkeleton } from "@/components/common/Skeleton";
 import EmptyState from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useLowStockProducts } from "@/features/products/queries";
-import { useLocation } from "@/hooks/use-location";
-import { useAddress } from "@/hooks/use-address";
+import {
+  useTopProducts,
+  useLocationPerformance,
+  useCustomerPerformance,
+} from "@/features/analytics/queries";
+import { useRecentSales } from "@/features/sales/queries";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+} from "@/components/ui/chart";
+import * as Recharts from "recharts";
+import { SERVER_URL } from "@/config/constants"; // add
 
 type Period = "daily" | "weekly" | "monthly";
 
 const DashboardPage = () => {
-  const location = useLocation();
-  console.log(location);
+  // console.debug("geo location", location);
   const [period, setPeriod] = useState<Period>("monthly");
-  const {
-    activeOrg,
-    isActiveOrgPending,
-    organizations,
-    isOrganizationsPending,
-  } = useOrganization();
-  const {
-    data: session,
-    isLoading: isSessionLoading,
-    error: sessionError,
-  } = useSession();
-  const { address: addr, loading: addrLoading } = useAddress();
+  const { activeOrg, organizations } = useOrganization();
+  const { data: session, } = useSession();
 
-  // Replace salesSummaryQuery with analytics summary
-  const { data: summary, isLoading: isSummaryLoading } = useAnalyticsSummary();
-  const { data: lowStock = [], isLoading: lowLoading } = useLowStockProducts(8);
+  const queriesEnabled = !!session?.user && !!activeOrg;
+
+  const { data: summary, isLoading: isSummaryLoading } = useAnalyticsSummary(
+    period,
+    { enabled: queriesEnabled }
+  );
+  const { data: lowStock = [], isLoading: lowLoading } = useLowStockProducts(8,
+ { enabled: queriesEnabled }
+  );
+  const { data: topProducts = [], isLoading: topLoading } = useTopProducts(
+    {
+      limit: 5,
+    },
+    { enabled: queriesEnabled }
+  );
+  const { data: locPerf = [], isLoading: locLoading } = useLocationPerformance(
+    {
+      limit: 5,
+    },
+    { enabled: queriesEnabled }
+  );
+  const { data: custPerf = [], isLoading: custLoading } =
+    useCustomerPerformance({ limit: 5 }, { enabled: queriesEnabled });
+  const { data: recentSales = [], isLoading: recentLoading } = useRecentSales(
+    8,
+    { enabled: queriesEnabled }
+  );
 
   const noActiveOrgAndNoOrgs = useMemo(
     () => !activeOrg && (organizations?.length ?? 0) === 0,
     [activeOrg, organizations]
   );
 
-  if (
-    isSummaryLoading ||
-    isActiveOrgPending ||
-    isOrganizationsPending ||
-    isSessionLoading
-  ) {
-    return (
-      <div className="container mx-auto p-6 space-y-8">
-        {/* <PageHeaderSkeleton /> */}
-        <CardsSkeleton />
-      </div>
-    );
-  }
-  if (sessionError || !session?.user)
-    return <Navigate to="/auth/sign-in" replace />;
 
-  const name = session.user.name ?? "guest";
-  // const currencyCode = activeOrg?.currency ?? "NGN";
+  const name = session?.user?.name ?? "guest";
   const currencyCode = "NGN";
 
   // Derive fields from analytics summary
@@ -70,13 +78,7 @@ const DashboardPage = () => {
   return (
     <div className="container mx-auto p-6 space-y-8">
       <PageHeader title={name} subtitle="Welcome" />
-      <div className="text-xs text-muted-foreground">
-        {addrLoading
-          ? "Resolving address…"
-          : addr?.display
-            ? `Approx. location: ${addr.display}`
-            : null}
-      </div>
+
       {noActiveOrgAndNoOrgs ? (
         /* First-time onboarding (only show when no orgs/sales yet) */
         <>
@@ -97,22 +99,49 @@ const DashboardPage = () => {
         </>
       ) : (
         <>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3">
-            <select
-              className="border rounded px-2 py-1 text-sm"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value as Period)}
-            >
-              <option value="daily">Today</option>
-              <option value="weekly">This week</option>
-              <option value="monthly">This month</option>
-            </select>
+            <div className="flex gap-2">
+              {(["daily", "weekly", "monthly"] as Period[]).map((p) => (
+                <Button
+                key={p}
+                size="sm"
+                variant={p === period ? "default" : "outline"}
+                onClick={() => setPeriod(p)}
+                >
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </Button>
+              ))}
+            </div>
           </div>
+        <div className="flex items-center gap-3">
+          <Button className="bg-accent hover:bg-secondary" >
 
+            <a
+              href={`${SERVER_URL}/api/reports/sales.csv?period=${period}`}
+              className="text-xs "
+              target="_blank"
+              rel="noreferrer"
+            >
+              Export CSV ({period})
+            </a>
+          </Button>
+          <Button> <a
+              href={`${SERVER_URL}/api/reports/sales.pdf?period=${period}&currency=${currencyCode}`}
+              className="text-xs "
+              target="_blank"
+              rel="noreferrer"
+            >
+              Export PDF ({period})
+            </a></Button>
+           
+              </div>
+          </div>
           {/* KPIs */}
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <Kpi title="Sales today" value={kpis.salesToday} />
+            <Kpi title="Sales" value={kpis.salesToday} />
             <Kpi
               title="Revenue (MTD)"
               value={kpis.revenueMtd}
@@ -134,18 +163,67 @@ const DashboardPage = () => {
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2">
               <CardContent className="p-4">
-                <h3 className="font-semibold mb-2">Sales vs Expenses</h3>
-                <div className="h-56 rounded bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
-                  Chart placeholder (line/area)
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-2">Top products</h3>
-                <div className="h-56 rounded bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
-                  Chart placeholder (bar/pie)
-                </div>
+                <h3 className="font-semibold mb-2">Sales vs Expenses (MTD)</h3>
+                {isSummaryLoading ? (
+                  <div className="h-56 rounded bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
+                    Loading…
+                  </div>
+                ) : (
+                  <ChartContainer
+                    id="sales-expenses"
+                    config={{
+                      sales: {
+                        label: "Sales",
+                        theme: {
+                          light: "hsl(var(--chart-1))",
+                          dark: "hsl(var(--chart-1))",
+                        },
+                      },
+                      expenses: {
+                        label: "Expenses",
+                        theme: {
+                          light: "hsl(var(--chart-3))",
+                          dark: "hsl(var(--chart-3))",
+                        },
+                      },
+                    }}
+                    className="h-56"
+                  >
+                    <Recharts.ResponsiveContainer>
+                      <Recharts.AreaChart
+                        data={[
+                          {
+                            name: "MTD",
+                            sales: summary?.totalRevenue ?? 0,
+                            expenses: summary?.expensesTotal ?? 0,
+                          },
+                        ]}
+                      >
+                        <Recharts.XAxis dataKey="name" />
+                        <Recharts.YAxis />
+                        <Recharts.CartesianGrid strokeDasharray="3 3" />
+                        <ChartTooltip
+                          content={<ChartTooltipContent indicator="dashed" />}
+                        />
+                        <ChartLegend />
+                        <Recharts.Area
+                          type="monotone"
+                          dataKey="sales"
+                          stroke="var(--color-sales)"
+                          fill="var(--color-sales)"
+                          fillOpacity={0.25}
+                        />
+                        <Recharts.Area
+                          type="monotone"
+                          dataKey="expenses"
+                          stroke="var(--color-expenses)"
+                          fill="var(--color-expenses)"
+                          fillOpacity={0.25}
+                        />
+                      </Recharts.AreaChart>
+                    </Recharts.ResponsiveContainer>
+                  </ChartContainer>
+                )}
               </CardContent>
             </Card>
           </section>
@@ -186,7 +264,291 @@ const DashboardPage = () => {
                 )}
               </CardContent>
             </Card>
+            {/* Top products */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">Top products</h3>
+                  <a className="text-xs underline" href="/dashboard/sales">
+                    View sales
+                  </a>
+                </div>
+                {topLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading…</div>
+                ) : topProducts.length === 0 ? (
+                  <EmptyState
+                    title="No sales yet"
+                    description="Process a sale to see top products."
+                    variant="card"
+                    align="start"
+                  />
+                ) : (
+                  <ChartContainer
+                    id="top-products"
+                    config={{
+                      revenue: {
+                        label: "Revenue",
+                        theme: {
+                          light: "hsl(var(--chart-1))",
+                          dark: "hsl(var(--chart-1))",
+                        },
+                      },
+                      qty: {
+                        label: "Qty",
+                        theme: {
+                          light: "hsl(var(--chart-2))",
+                          dark: "hsl(var(--chart-2))",
+                        },
+                      },
+                    }}
+                    className="h-56"
+                  >
+                    <Recharts.ResponsiveContainer>
+                      <Recharts.BarChart data={topProducts}>
+                        <Recharts.XAxis
+                          dataKey="name"
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Recharts.YAxis tick={{ fontSize: 12 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <ChartLegend />
+                        <Recharts.Bar
+                          dataKey="revenue"
+                          name="Revenue"
+                          fill="var(--color-revenue)"
+                        />
+                        <Recharts.Bar
+                          dataKey="qty"
+                          name="Qty"
+                          fill="var(--color-qty)"
+                        />
+                      </Recharts.BarChart>
+                    </Recharts.ResponsiveContainer>
+                  </ChartContainer>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">Best locations</h3>
+                  <a className="text-xs underline" href="/dashboard/sales">
+                    View sales
+                  </a>
+                </div>
+                {locLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading…</div>
+                ) : locPerf.length === 0 ? (
+                  <EmptyState
+                    title="No data"
+                    description="Record sales with a location to see performance."
+                    variant="card"
+                    align="start"
+                  />
+                ) : (
+                  <ChartContainer
+                    id="best-locations"
+                    config={{
+                      revenue: {
+                        label: "Revenue",
+                        theme: {
+                          light: "hsl(var(--chart-1))",
+                          dark: "hsl(var(--chart-1))",
+                        },
+                      },
+                      grossProfit: {
+                        label: "Gross Profit",
+                        theme: {
+                          light: "hsl(var(--chart-4))",
+                          dark: "hsl(var(--chart-4))",
+                        },
+                      },
+                    }}
+                    className="h-56"
+                  >
+                    <Recharts.ResponsiveContainer>
+                      <Recharts.BarChart
+                        data={locPerf}
+                        margin={{ top: 8, right: 16, left: 8, bottom: 24 }}
+                      >
+                        <Recharts.XAxis
+                          dataKey="locationName"
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(v: string) =>
+                            v.length > 12 ? v.slice(0, 12) + "…" : v
+                          }
+                        />
+                        <Recharts.YAxis
+                          tickFormatter={(v: number) =>
+                            new Intl.NumberFormat(undefined, {
+                              style: "currency",
+                              currency: currencyCode,
+                            }).format(v)
+                          }
+                        />
+                        <Recharts.CartesianGrid strokeDasharray="3 3" />
+                        <ChartTooltip
+                          content={
+                            <ChartTooltipContent
+                              valueFormatter={(v: number) =>
+                                new Intl.NumberFormat(undefined, {
+                                  style: "currency",
+                                  currency: currencyCode,
+                                }).format(v)
+                              }
+                            />
+                          }
+                        />
+                        <ChartLegend />
+                        <Recharts.Bar
+                          dataKey="revenue"
+                          name="Revenue"
+                          fill="var(--color-revenue)"
+                        />
+                        <Recharts.Bar
+                          dataKey="grossProfit"
+                          name="Gross Profit"
+                          fill="var(--color-grossProfit)"
+                        />
+                      </Recharts.BarChart>
+                    </Recharts.ResponsiveContainer>
+                  </ChartContainer>
+                )}
+              </CardContent>
+            </Card>
+            {/* Best customers */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">Best customers</h3>
+                  <a className="text-xs underline" href="/dashboard/sales">
+                    View sales
+                  </a>
+                </div>
+                {custLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading…</div>
+                ) : custPerf.length === 0 ? (
+                  <EmptyState
+                    title="No data"
+                    description="Record sales with a customer to see performance."
+                    variant="card"
+                    align="start"
+                  />
+                ) : (
+                  <ChartContainer
+                    id="best-customers"
+                    config={{
+                      revenue: {
+                        label: "Revenue",
+                        theme: {
+                          light: "hsl(var(--chart-1))",
+                          dark: "hsl(var(--chart-1))",
+                        },
+                      },
+                      grossProfit: {
+                        label: "Gross Profit",
+                        theme: {
+                          light: "hsl(var(--chart-5))",
+                          dark: "hsl(var(--chart-5))",
+                        },
+                      },
+                    }}
+                    className="h-56"
+                  >
+                    <Recharts.ResponsiveContainer>
+                      <Recharts.BarChart
+                        data={custPerf}
+                        margin={{ top: 8, right: 16, left: 8, bottom: 24 }}
+                      >
+                        <Recharts.XAxis
+                          dataKey="customerName"
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(v: string) =>
+                            v.length > 12 ? v.slice(0, 12) + "…" : v
+                          }
+                        />
+                        <Recharts.YAxis
+                          tickFormatter={(v: number) =>
+                            new Intl.NumberFormat(undefined, {
+                              style: "currency",
+                              currency: currencyCode,
+                            }).format(v)
+                          }
+                        />
+                        <Recharts.CartesianGrid strokeDasharray="3 3" />
+                        <ChartTooltip
+                          content={
+                            <ChartTooltipContent
+                              valueFormatter={(v: number) =>
+                                new Intl.NumberFormat(undefined, {
+                                  style: "currency",
+                                  currency: currencyCode,
+                                }).format(v)
+                              }
+                            />
+                          }
+                        />
+                        <ChartLegend />
+                        <Recharts.Bar
+                          dataKey="revenue"
+                          name="Revenue"
+                          fill="var(--color-revenue)"
+                        />
+                        <Recharts.Bar
+                          dataKey="grossProfit"
+                          name="Gross Profit"
+                          fill="var(--color-grossProfit)"
+                        />
+                      </Recharts.BarChart>
+                    </Recharts.ResponsiveContainer>
+                  </ChartContainer>
+                )}
+              </CardContent>
+            </Card>
+            {/* Recent sales */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">Recent sales</h3>
+                  <a className="text-xs underline" href="/dashboard/sales">
+                    View all
+                  </a>
+                </div>
+                {recentLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading…</div>
+                ) : recentSales.length === 0 ? (
+                  <EmptyState
+                    title="No sales recorded yet"
+                    description="Record your first sale to see it here."
+                    action={{
+                      to: "/dashboard/sales/new",
+                      label: "Record sale",
+                    }}
+                    variant="card"
+                    align="start"
+                  />
+                ) : (
+                  <ul className="divide-y">
+                    {recentSales.map((s) => (
+                      <li
+                        key={s.id}
+                        className="py-2 flex items-center justify-between"
+                      >
+                        <span className="text-sm">{s.ref}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Intl.NumberFormat(undefined, {
+                            style: "currency",
+                            currency: currencyCode,
+                          }).format(s.amount)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
           </section>
+  
         </>
       )}
     </div>
@@ -219,40 +581,3 @@ function Kpi({
 }
 
 export default DashboardPage;
-// <Card>
-//             <CardContent className="p-4 space-y-3">
-//               <div className="flex items-center justify-between">
-//                 <h3 className="font-semibold">Recent sales</h3>
-//                 <a className="text-xs underline" href="/dashboard/sales">
-//                   View all
-//                 </a>
-//               </div>
-//               {recentSales.length === 0 ? (
-//                 <EmptyState
-//                   title="No sales recorded yet"
-//                   description="Record your first sale to see it here."
-//                   action={{ to: "/dashboard/sales", label: "Record sale" }}
-//                   variant="card"
-//                   align="start"
-//                 />
-//               ) : (
-//                 <ul className="divide-y">
-//                   {recentSales.map((s) => (
-//                     <li
-//                       key={s.id}
-//                       className="py-2 flex items-center justify-between"
-//                     >
-//                       <span className="text-sm">{s.ref}</span>
-//                       <span className="text-xs text-muted-foreground">
-//                         {/* Use org currency */}
-//                         {new Intl.NumberFormat(undefined, {
-//                           style: "currency",
-//                           currency: currencyCode,
-//                         }).format(s.amount)}
-//                       </span>
-//                     </li>
-//                   ))}
-//                 </ul>
-//               )}
-//             </CardContent>
-//           </Card>
