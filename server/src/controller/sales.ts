@@ -54,90 +54,37 @@ export const createSale = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { items, customerId, locationId } = req.body;
 
-  if (!organizationId || !userId) {
+  if (!organizationId || !userId)
     return res.status(401).json({ error: "Unauthorized" });
-  }
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: "No items in sale" });
-  }
+  if (!Array.isArray(items) || items.length === 0)
+    return res.status(400).json({ error: "No items" });
 
-  try {
-    const result = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        // Optional validation of customer/location ownership
-        if (customerId) {
-          const c = await tx.customer.findUnique({ where: { id: customerId } });
-          if (!c || c.organizationId !== organizationId)
-            throw new Error("Invalid customer");
-        }
-        if (locationId) {
-          const l = await tx.location.findUnique({ where: { id: locationId } });
-          if (!l || l.organizationId !== organizationId)
-            throw new Error("Invalid location");
-        }
+  // Compute total from items
+  const totalAmount = items.reduce(
+    (acc: number, it: any) => acc + Number(it.unitPrice) * Number(it.quantity),
+    0
+  );
 
-        let totalAmount = 0;
-        const saleItemsData: {
-          productId: string;
-          quantity: number;
-          unitPrice: number;
-        }[] = [];
-        const productMap: Record<string, { costPrice: number }> = {};
+  const sale = await prisma.sale.create({
+    data: {
+      organizationId,
+      userId,
+      customerId: customerId ?? null,
+      locationId: locationId ?? null,
+      totalAmount,
+      items: {
+        create: items.map((it: any) => ({
+          productId: it.productId,
+          quantity: Number(it.quantity),
+          unitPrice: it.unitPrice, // Decimal-compatible
+          unitCost: it.unitCost ?? null,
+        })),
+      },
+    },
+    include: { items: true },
+  });
 
-        for (const item of items) {
-          const { productId, quantity } = item;
-          const product = await tx.product.findUnique({
-            where: { id: productId },
-          });
-          if (!product) throw new Error(`Product ${productId} not found`);
-          if (product.organizationId !== organizationId)
-            throw new Error("Product not in organization");
-          if (product.stock < quantity)
-            throw new Error(`Insufficient stock for ${product.name}`);
-
-          const unitPrice = Number(product.price);
-          totalAmount += unitPrice * quantity;
-
-          saleItemsData.push({ productId, quantity, unitPrice });
-          productMap[productId] = { costPrice: Number(product.costPrice ?? 0) };
-
-          await tx.product.update({
-            where: { id: productId },
-            data: { stock: { decrement: quantity } },
-          });
-        }
-
-        const sale = await tx.sale.create({
-          data: {
-            organizationId,
-            userId,
-            totalAmount,
-            customerId: customerId || null,
-            locationId: locationId || null,
-            items: { create: saleItemsData },
-          },
-          include: { items: true },
-        });
-
-        await tx.saleLineItem.createMany({
-          data: saleItemsData.map((li) => ({
-            saleId: sale.id,
-            productId: li.productId,
-            quantity: li.quantity,
-            unitPrice: li.unitPrice,
-            unitCost: productMap[li.productId]?.costPrice ?? 0,
-          })),
-        });
-
-        return sale;
-      }
-    );
-
-    res.status(201).json(result);
-  } catch (error: any) {
-    console.error("Sale failed:", error);
-    res.status(400).json({ error: error.message || "Transaction failed" });
-  }
+  res.status(201).json(sale);
 };
 export const salesSummary = async (req: Request, res: Response) => {
   const organizationId = req.orgId;
@@ -193,4 +140,26 @@ export const salesSummary = async (req: Request, res: Response) => {
     console.error("Summary error:", error);
     res.status(500).json({ error: "Failed to fetch summary" });
   }
+};
+
+export const getRecents = async (req: Request, res: Response) => {
+  const orgId = req.orgId;
+  if (!orgId) return res.status(401).json({ error: "Unauthorized" });
+  console.log("getRecents orgId:", orgId);
+  const { limit = "10" } = req.query;
+  const sales = await prisma.sale.findMany({
+    where: { organizationId: orgId },
+    select: { id: true, createdAt: true, totalAmount: true },
+    orderBy: { createdAt: "desc" },
+    take: Number(limit),
+  });
+  console.log("recent sales count:", sales.length);
+  res.json(
+    sales.map((s) => ({
+      id: s.id,
+      ref: s.id.slice(0, 8),
+      date: s.createdAt,
+      amount: Number(s.totalAmount ?? 0),
+    }))
+  );
 };
