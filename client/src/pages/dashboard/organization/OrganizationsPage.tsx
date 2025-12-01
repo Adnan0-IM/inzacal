@@ -1,6 +1,5 @@
 import { OrganizationsCard } from "@daveyplate/better-auth-ui";
 import PageHeader from "@/components/common/PageHeader";
-import CreateOrganizationForm from "@/features/organization/CreateOrganizationForm";
 
 const OrganizationsPage = () => {
   return (
@@ -9,7 +8,6 @@ const OrganizationsPage = () => {
         title="Organizations"
         subtitle="Create and manage your organizations"
       />
-      <CreateOrganizationForm />
       <OrganizationsCard />
     </div>
   );

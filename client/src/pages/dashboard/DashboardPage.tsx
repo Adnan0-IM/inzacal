@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAnalyticsSummary } from "@/features/analytics/queries";
-import { useOrganization } from "@/features/dashboard";
+import { useOrganization } from "@/features/dashboard/hooks/useOrganization";
 import { useSession } from "@/features/auth/hooks/useSession";
 import PageHeader from "@/components/common/PageHeader";
 import EmptyState from "@/components/common/EmptyState";
@@ -28,7 +28,7 @@ const DashboardPage = () => {
   // console.debug("geo location", location);
   const [period, setPeriod] = useState<Period>("monthly");
   const { activeOrg, organizations } = useOrganization();
-  const { data: session, } = useSession();
+  const { data: session } = useSession();
 
   const queriesEnabled = !!session?.user && !!activeOrg;
 
@@ -36,8 +36,9 @@ const DashboardPage = () => {
     period,
     { enabled: queriesEnabled }
   );
-  const { data: lowStock = [], isLoading: lowLoading } = useLowStockProducts(8,
- { enabled: queriesEnabled }
+  const { data: lowStock = [], isLoading: lowLoading } = useLowStockProducts(
+    8,
+    { enabled: queriesEnabled }
   );
   const { data: topProducts = [], isLoading: topLoading } = useTopProducts(
     {
@@ -62,7 +63,6 @@ const DashboardPage = () => {
     () => !activeOrg && (organizations?.length ?? 0) === 0,
     [activeOrg, organizations]
   );
-
 
   const name = session?.user?.name ?? "guest";
   const currencyCode = "NGN";
@@ -99,45 +99,45 @@ const DashboardPage = () => {
         </>
       ) : (
         <>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-2">
-              {(["daily", "weekly", "monthly"] as Period[]).map((p) => (
-                <Button
-                key={p}
-                size="sm"
-                variant={p === period ? "default" : "outline"}
-                onClick={() => setPeriod(p)}
-                >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </Button>
-              ))}
-            </div>
-          </div>
-        <div className="flex items-center gap-3">
-          <Button className="bg-accent hover:bg-secondary" >
-
-            <a
-              href={`${SERVER_URL}/api/reports/sales.csv?period=${period}`}
-              className="text-xs "
-              target="_blank"
-              rel="noreferrer"
-            >
-              Export CSV ({period})
-            </a>
-          </Button>
-          <Button> <a
-              href={`${SERVER_URL}/api/reports/sales.pdf?period=${period}&currency=${currencyCode}`}
-              className="text-xs "
-              target="_blank"
-              rel="noreferrer"
-            >
-              Export PDF ({period})
-            </a></Button>
-           
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex gap-2">
+                {(["daily", "weekly", "monthly"] as Period[]).map((p) => (
+                  <Button
+                    key={p}
+                    size="sm"
+                    variant={p === period ? "default" : "outline"}
+                    onClick={() => setPeriod(p)}
+                  >
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </Button>
+                ))}
               </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button className="bg-accent hover:bg-secondary">
+                <a
+                  href={`${SERVER_URL}/api/reports/sales.csv?period=${period}`}
+                  className="text-xs "
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Export CSV ({period})
+                </a>
+              </Button>
+              <Button>
+                {" "}
+                <a
+                  href={`${SERVER_URL}/api/reports/sales.pdf?period=${period}&currency=${currencyCode}`}
+                  className="text-xs "
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Export PDF ({period})
+                </a>
+              </Button>
+            </div>
           </div>
           {/* KPIs */}
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -387,18 +387,7 @@ const DashboardPage = () => {
                           }
                         />
                         <Recharts.CartesianGrid strokeDasharray="3 3" />
-                        <ChartTooltip
-                          content={
-                            <ChartTooltipContent
-                              valueFormatter={(v: number) =>
-                                new Intl.NumberFormat(undefined, {
-                                  style: "currency",
-                                  currency: currencyCode,
-                                }).format(v)
-                              }
-                            />
-                          }
-                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
                         <ChartLegend />
                         <Recharts.Bar
                           dataKey="revenue"
@@ -476,18 +465,7 @@ const DashboardPage = () => {
                           }
                         />
                         <Recharts.CartesianGrid strokeDasharray="3 3" />
-                        <ChartTooltip
-                          content={
-                            <ChartTooltipContent
-                              valueFormatter={(v: number) =>
-                                new Intl.NumberFormat(undefined, {
-                                  style: "currency",
-                                  currency: currencyCode,
-                                }).format(v)
-                              }
-                            />
-                          }
-                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
                         <ChartLegend />
                         <Recharts.Bar
                           dataKey="revenue"
@@ -548,7 +526,6 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
           </section>
-  
         </>
       )}
     </div>
