@@ -1,7 +1,7 @@
 import { AuthUIProvider } from "@daveyplate/better-auth-ui";
 import { authClient } from "@/lib/auth-client";
 import { useNavigate, NavLink } from "react-router";
-import { api } from "@/lib/http";
+// import { api } from "@/lib/http";
 
 type LinkProps = {
   href: string;
@@ -35,21 +35,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
         social={{
           providers: ["google"],
         }}
-        avatar={{
-          upload: async (file) => {
-            const formData = new FormData();
-            formData.append("avatar", file);
-            const res = await api.post("/uploadAvatar", formData)
-            const { data } = await res;
-            return data.url;
-          },
-          delete: async (url) => {
-            await api.post("/deleteAvatar", {
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url }),
-            });
-          },
-        }}
+        // avatar={{
+        //   upload: async (file) => {
+        //     const formData = new FormData();
+        //     formData.append("avatar", file);
+        //     const res = await api.post("/uploadAvatar", formData)
+        //     const { data } = await res;
+        //     return data.url;
+        //   },
+        //   delete: async (url) => {
+        //     await api.post("/deleteAvatar", {
+        //       headers: { "Content-Type": "application/json" },
+        //       body: JSON.stringify({ url }),
+        //     });
+        //   },
+        // }}
         // captcha={{
         //   provider: "google-recaptcha-v3",
         //   siteKey: "your-site-key",

@@ -4,19 +4,21 @@ import {
   RedirectToSignIn,
   SignedIn,
 } from "@daveyplate/better-auth-ui";
+import { Outlet } from "react-router";
 
-export default function PrivateRoute({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function PrivateRoute() {
   return (
     <>
-      <RedirectToSignIn />
       <AuthLoading>
         <Loading />
       </AuthLoading>
-      <SignedIn>{children}</SignedIn>
+
+      <SignedIn>
+        <Outlet />
+      </SignedIn>
+
+      {/* Only runs when NOT loading and NOT signed in */}
+      <RedirectToSignIn />
     </>
   );
 }
