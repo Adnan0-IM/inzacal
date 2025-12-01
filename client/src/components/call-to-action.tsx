@@ -15,12 +15,12 @@ export default function CallToAction() {
             operations and impressed their investors with professional
             reporting.
           </p>
-          <Link to="/auth">
+          <Link to="/auth/sign-up">
             <Button
               size="lg"
               className="text-lg px-8 py-5 bg-amber-600 hover:bg-amber-600/90 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
             >
-              Start For Free 
+              Start For Free
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
             </Button>
           </Link>

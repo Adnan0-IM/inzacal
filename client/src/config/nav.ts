@@ -48,24 +48,24 @@ export const nav: NavGroup[] = [
         to: "/dashboard/sales",
         roles: ["owner", "admin", "salesperson"],
       },
-      {
-        id: "expenses",
-        label: "Expenses",
-        to: "/dashboard/expenses",
-        roles: ["owner", "admin", "accountant"],
-      },
-      {
-        id: "investors",
-        label: "Investors",
-        to: "/dashboard/investors",
-        roles: ["owner", "admin", "investor"],
-      },
-      {
-        id: "reports",
-        label: "Reports",
-        to: "/dashboard/reports",
-        roles: ["owner", "admin", "accountant"],
-      },
+      // {
+      //   id: "expenses",
+      //   label: "Expenses",
+      //   to: "/dashboard/expenses",
+      //   roles: ["owner", "admin", "accountant"],
+      // },
+      // {
+      //   id: "investors",
+      //   label: "Investors",
+      //   to: "/dashboard/investors",
+      //   roles: ["owner", "admin", "investor"],
+      // },
+      // {
+      //   id: "reports",
+      //   label: "Reports",
+      //   to: "/dashboard/reports",
+      //   roles: ["owner", "admin", "accountant"],
+      // },
     ],
   },
   {
