@@ -12,7 +12,8 @@ export const analyticsRouter = Router();
 analyticsRouter.get("/summary", async (req, res) => {
   const period = (req.query.period as string)?.toLowerCase();
   try {
-    const data = await analyticsSummary({ period, orgId: req.orgId });
+    const params = { period, ...(req.orgId ? { orgId: req.orgId } : {}) };
+    const data = await analyticsSummary(params);
     res.json(data);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
