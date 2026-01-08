@@ -1,6 +1,6 @@
 import type { Response, Request } from "express";
 import { prisma } from "../lib/prisma.js";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "../generated/prisma/client.js";
 
 // Helper to derive date range from a period
 function resolvePeriodRange(period?: string) {
