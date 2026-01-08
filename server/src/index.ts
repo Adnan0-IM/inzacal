@@ -13,6 +13,7 @@ import { notificationsRouter } from "./routes/notifications.js";
 import { reportsRouter } from "./routes/reports.js";
 import { corsRouter } from "./utils/cors.js";
 import { syncPolicyFeed } from "./jobs/policyFeed.js";
+import "./utils/keep-awake.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
