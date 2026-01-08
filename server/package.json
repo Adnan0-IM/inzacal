@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "jest",
+    "postinstall": "prisma generate",
     "build": "npx prisma generate && tsc",
     "start": "node dist/src/index.js",
     "dev": "tsx watch src/index.ts"
