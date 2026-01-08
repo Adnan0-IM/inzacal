@@ -1,12 +1,17 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+
 declare global {
   // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined;
 }
 
 const connectionString = `${process.env.DATABASE_URL}`;
-const adapter = new PrismaPg({ connectionString });
+
+// FIX: Create a Pool instance first, then pass it to PrismaPg
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
 
 export const prisma =
   globalThis.prisma ??
@@ -16,7 +21,7 @@ export const prisma =
       { emit: "stdout", level: "warn" },
       { emit: "stdout", level: "error" },
     ],
-    errorFormat: "pretty",
+    // errorFormat: "pretty", // Disable pretty print in prod logs to save space
   });
 
 if (process.env.NODE_ENV !== "production") globalThis.prisma = prisma;
@@ -26,6 +31,7 @@ export async function initDB(retries = 5) {
   for (let i = 0; i < retries; i++) {
     try {
       await prisma.$connect();
+      // Test the connection
       await prisma.$queryRaw`SELECT 1`;
       return;
     } catch (e) {
