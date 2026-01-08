@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "jest",
-    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "build": "npm run type-check && tsc",
     "start": "node dist/src/index.js",
     "dev": "tsx watch src/index.ts"
   },

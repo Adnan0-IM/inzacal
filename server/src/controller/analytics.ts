@@ -1,5 +1,6 @@
 import type { Response, Request } from "express";
 import { prisma } from "../lib/prisma.js";
+import type { Prisma } from "@prisma/client";
 
 // Helper to derive date range from a period
 function resolvePeriodRange(period?: string) {
@@ -65,7 +66,23 @@ export async function analyticsSummary({ period, orgId }: SummaryParams) {
     totalRevenue += lineRevenue;
     grossProfit += lineRevenue - lineCost;
   }
-  const expensesTotal = expenses.reduce((a, e) => a + Number(e.amount), 0);
+  const expensesTotal = expenses.reduce(
+    (
+      a: number,
+      e: {
+        id: string;
+        createdAt: Date;
+        userId: string | null;
+        organizationId: string;
+        currency: string;
+        description: string;
+        category: string;
+        amount: Prisma.Decimal;
+        occurredOn: Date;
+      }
+    ) => a + Number(e.amount),
+    0
+  );
 
   // low stock: stock < (minStock || 5)
   const products = await prisma.product.findMany({
@@ -73,7 +90,7 @@ export async function analyticsSummary({ period, orgId }: SummaryParams) {
     select: { stock: true, minStock: true },
   });
   const lowStockCount = products.filter(
-    (p) => p.stock < (p.minStock ?? 5)
+    (p: { stock: number; minStock: number }) => p.stock < (p.minStock ?? 5)
   ).length;
 
   return {
@@ -186,7 +203,13 @@ export const locationPerformance = async (req: Request, res: Response) => {
     select: { id: true, totalAmount: true, locationId: true },
   });
 
-  const saleIds = sales.map((s) => s.id);
+  const saleIds = sales.map(
+    (s: {
+      id: string;
+      totalAmount: Prisma.Decimal;
+      locationId: string | null;
+    }) => s.id
+  );
   const lineItems = saleIds.length
     ? await prisma.saleLineItem.findMany({
         where: { saleId: { in: saleIds } },
@@ -249,7 +272,9 @@ export const locationPerformance = async (req: Request, res: Response) => {
       })
     : [];
 
-  const nameById = new Map(locations.map((l) => [l.id, l.name]));
+  const nameById = new Map(
+    locations.map((l: { name: string; id: string }) => [l.id, l.name])
+  );
 
   const result = Array.from(perf.values())
     .map((x) => ({
@@ -301,7 +326,19 @@ export const customerPerformance = async (req: Request, res: Response) => {
     },
   });
 
-  const saleIds = sales.map((s) => s.id);
+  const saleIds = sales.map(
+    (s: {
+      id: string;
+      totalAmount: Prisma.Decimal;
+      customerId: string | null;
+      customer: {
+        name: string;
+        id: string;
+        city: string | null;
+        country: string | null;
+      } | null;
+    }) => s.id
+  );
   const lineItems = saleIds.length
     ? await prisma.saleLineItem.findMany({
         where: { saleId: { in: saleIds } },

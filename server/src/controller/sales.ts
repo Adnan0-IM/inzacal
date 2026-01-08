@@ -1,5 +1,6 @@
 import type { Response, Request } from "express";
 import { prisma } from "../lib/prisma.js";
+import type { Prisma } from "@prisma/client";
 
 export const getSales = async (req: Request, res: Response) => {
   const organizationId = req.orgId;
@@ -154,7 +155,7 @@ export const getRecents = async (req: Request, res: Response) => {
   });
   console.log("recent sales count:", sales.length);
   res.json(
-    sales.map((s) => ({
+    sales.map((s: { id: string; createdAt: Date; totalAmount: Prisma.Decimal }) => ({
       id: s.id,
       ref: s.id.slice(0, 8),
       date: s.createdAt,
