@@ -1,6 +1,5 @@
 import type { Response, Request } from "express";
 import { prisma } from "../lib/prisma.js";
-import type { Prisma } from "@prisma/client";
 
 export const getSales = async (req: Request, res: Response) => {
   const organizationId = req.orgId;

@@ -51,3 +51,6 @@ app.listen(port, () => {
 
 setInterval(syncPolicyFeed, 15 * 60 * 1000); // every 15 minutes
 syncPolicyFeed();
+
+// For vercel
+export default app;

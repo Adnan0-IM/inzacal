@@ -5,6 +5,13 @@ import fs from "fs";
 
 export const reportsRouter = Router();
 
+type SaleRow = Awaited<ReturnType<typeof prisma.sale.findMany>>[number];
+type SaleLineItemRow = Awaited<
+  ReturnType<typeof prisma.saleLineItem.findMany>
+>[number];
+type CustomerRow = Awaited<ReturnType<typeof prisma.customer.findMany>>[number];
+type LocationRow = Awaited<ReturnType<typeof prisma.location.findMany>>[number];
+
 function periodSince(period: "weekly" | "monthly" | "quarterly" | "yearly") {
   const now = new Date();
   const ms =
@@ -112,11 +119,11 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
   }
 
   const totalRevenue = sales.reduce(
-    (sum, s) => sum + Number(s.totalAmount ?? 0),
+    (sum: number, s) => sum + Number(s.totalAmount ?? 0),
     0
   );
   const totalCogs = sales.reduce(
-    (sum, s) => sum + (cogsBySale.get(s.id) ?? 0),
+    (sum: number, s) => sum + (cogsBySale.get(s.id) ?? 0),
     0
   );
   const grossProfit = totalRevenue - totalCogs;
@@ -196,8 +203,8 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
         select: { id: true, name: true },
       })
     : [];
-  const cname = new Map(customers.map((c) => [c.id, c.name]));
-  const lname = new Map(locations.map((l) => [l.id, l.name]));
+  const cname = new Map<string, string>(customers.map((c) => [c.id, c.name]));
+  const lname = new Map<string, string>(locations.map((l) => [l.id, l.name]));
 
   // Rows
   for (const s of sales) {
