@@ -45,16 +45,9 @@ app.get("/health", (_, res) => {
   res.status(200).json({ status: "Ok", timeStamp: new Date() });
 });
 
-// VERCEL FIX: Only listen on port and run background jobs if NOT on Vercel.
-// On Vercel, the environment handles the port, and functions freeze after responses (killing intervals).
-if (process.env.NODE_ENV !== "production") {
-  app.listen(port, () => {
-    console.log(`Better Auth app listening on port ${port}`);
-  });
+app.listen(port, () => {
+  console.log(`Better Auth app listening on port ${port}`);
+});
 
-  setInterval(syncPolicyFeed, 15 * 60 * 1000); // every 15 minutes
-  syncPolicyFeed();
-}
-
-// For vercel
-export default app;
+setInterval(syncPolicyFeed, 15 * 60 * 1000); // every 15 minutes
+syncPolicyFeed();
