@@ -6,6 +6,8 @@ export function useOrganization() {
   const { hooks } = useContext(AuthUIContext);
   const { data: activeOrg, isPending: isActiveOrgPending } = hooks.useActiveOrganization();
 
+ 
+
   // List all organizations
   const { data: organizations, isPending: isOrganizationsPending } = hooks.useListOrganizations();
 

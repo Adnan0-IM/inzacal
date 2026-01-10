@@ -27,7 +27,7 @@ export const HeroHeader = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  const isAuth = !!data?.session.token;
+  const isAuth = !!data?.session?.token;
   return (
     <header>
       <nav

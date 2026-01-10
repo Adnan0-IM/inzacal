@@ -47,13 +47,12 @@ export function useLocation(): UseLocationState {
 
         // Fallback: try IP-based location (approximate, city-level)
         try {
-          const res = await fetch("https://api.ipify.org/?format=json", {
+          const res = await fetch("https://ipapi.co/json/", {
             cache: "no-store",
           });
           if (res.ok) {
             const data = await res.json();
             if (
-              data &&
               typeof data.latitude === "number" &&
               typeof data.longitude === "number"
             ) {
@@ -79,5 +78,3 @@ export function useLocation(): UseLocationState {
 
   return state;
 }
-
-

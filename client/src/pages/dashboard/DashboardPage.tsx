@@ -160,7 +160,7 @@ const DashboardPage = () => {
           </section>
 
           {/* Trends */}
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="lg:col-span-2">
               <CardContent className="p-4">
                 <h3 className="font-semibold mb-2">Sales vs Expenses (MTD)</h3>
