@@ -1,5 +1,6 @@
 import axios from "axios";
 import { prisma } from "../lib/prisma.js";
+import { CronJob } from "cron";
 
 type PolicyItem = {
   id: string;
@@ -14,7 +15,7 @@ type PolicyItem = {
   publishedAt?: string;
 };
 
-export async function syncPolicyFeed() {
+export const syncPolicyFeed = new CronJob("*/15 * * * *", async () => {
   const url = process.env.POLICY_FEED_URL;
   if (!url) return;
   try {
@@ -46,4 +47,4 @@ export async function syncPolicyFeed() {
   } catch (e) {
     console.error("Policy sync failed:", e);
   }
-}
+});

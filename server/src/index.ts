@@ -12,8 +12,8 @@ import { fxRouter } from "./routes/fx.js";
 import { notificationsRouter } from "./routes/notifications.js";
 import { reportsRouter } from "./routes/reports.js";
 import { corsRouter } from "./utils/cors.js";
-import { syncPolicyFeed } from "./jobs/policyFeed.js";
 import "./utils/keep-awake.js";
+import "./jobs/policyFeed.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
@@ -49,6 +49,3 @@ app.get("/health", (_, res) => {
 app.listen(port, () => {
   console.log(`Better Auth app listening on port ${port}`);
 });
-
-setInterval(syncPolicyFeed, 15 * 60 * 1000); // every 15 minutes
-syncPolicyFeed();
