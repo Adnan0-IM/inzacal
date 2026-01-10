@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import axios from "axios";
-import type { argv0 } from "process";
 
 export const getExchangeRate = async (_req: Request, res: Response) => {
   const latest = await prisma.fxRate.findMany({
@@ -31,7 +30,7 @@ export const refreshExchangeRate = async (req: Request, res: Response) => {
   const created = [];
 
   for (const [quote, rate] of entries as [string, number][]) {
-    const fx = await prisma.fxRate.create({ data: { base, quote, rate  } });
+    const fx = await prisma.fxRate.create({ data: { base, quote, rate } });
     created.push(fx);
   }
 
