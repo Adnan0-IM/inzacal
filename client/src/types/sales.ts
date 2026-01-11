@@ -1,3 +1,5 @@
+export type Period = "daily" | "weekly" | "monthly";
+
 export type SaleItemInput = {
   productId: string;
   quantity: number;
@@ -28,4 +30,24 @@ export type Sale = {
     email: string;
   };
   items: SaleItem[];
+};
+
+export type RecentSale = {
+  id: string;
+  ref: string;
+  date: string; // ISO
+  amount: number;
+};
+
+export type SalesSummary = {
+  period: Period;
+  totalRevenue: number;
+  salesCount: number;
+  lowStock: {
+    id: string;
+    name: string;
+    stock: number;
+    minStock: number;
+    qty: number;
+  }[];
 };

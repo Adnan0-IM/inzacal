@@ -1,12 +1,11 @@
 import { useState, useMemo } from "react";
 import { useAnalyticsSummary } from "@/features/analytics/queries";
-import { useOrganization } from "@/features/dashboard/hooks/useOrganization";
+import { useOrganization } from "@/features/auth/hooks/useOrganization";
 import { useSession } from "@/features/auth/hooks/useSession";
 import PageHeader from "@/components/common/PageHeader";
 import EmptyState from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useLowStockProducts } from "@/features/products/queries";
 import {
   useTopProducts,
   useLocationPerformance,
@@ -15,14 +14,13 @@ import {
 import { useRecentSales } from "@/features/sales/queries";
 import {
   ChartContainer,
-  ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart";
-import * as Recharts from "recharts";
 import { SERVER_URL } from "@/config/constants"; // add
-
-type Period = "daily" | "weekly" | "monthly";
+import type { LowStockItem } from "@/types/product";
+import type { Period } from "@/types/sales";
+import { Spinner } from "@/components/ui/spinner";
 
 const DashboardPage = () => {
   // console.debug("geo location", location);
@@ -36,10 +34,7 @@ const DashboardPage = () => {
     period,
     { enabled: queriesEnabled }
   );
-  const { data: lowStock = [], isLoading: lowLoading } = useLowStockProducts(
-    8,
-    { enabled: queriesEnabled }
-  );
+
   const { data: topProducts = [], isLoading: topLoading } = useTopProducts(
     {
       limit: 5,
@@ -67,11 +62,13 @@ const DashboardPage = () => {
   const name = session?.user?.name ?? "guest";
   const currencyCode = "NGN";
 
+  const lowLoading = false;
+  const lowStock: LowStockItem[] = [];
   // Derive fields from analytics summary
   const kpis = {
-    salesToday: summary?.totalSales ?? 0, // you can adjust to daily later
+    salesToday: summary?.totalSales ?? 0,
     revenueMtd: summary?.totalRevenue ?? 0,
-    profitMtd: summary?.grossProfit ?? 0, // or netProfit depending on your KPI
+    profitMtd: summary?.grossProfit ?? 0,
     expensesMtd: summary?.expensesTotal ?? 0,
     lowStockCount: summary?.lowStockCount ?? 0,
   };
@@ -116,7 +113,7 @@ const DashboardPage = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button className="bg-accent hover:bg-secondary">
+              <Button disabled={true} className="bg-accent hover:bg-secondary">
                 <a
                   href={`${SERVER_URL}/api/reports/sales.csv?period=${period}`}
                   className="text-xs "
@@ -126,7 +123,7 @@ const DashboardPage = () => {
                   Export CSV ({period})
                 </a>
               </Button>
-              <Button>
+              <Button disabled={true}>
                 {" "}
                 <a
                   href={`${SERVER_URL}/api/reports/sales.pdf?period=${period}&currency=${currencyCode}`}
@@ -141,18 +138,25 @@ const DashboardPage = () => {
           </div>
           {/* KPIs */}
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <Kpi title="Sales" value={kpis.salesToday} />
             <Kpi
+              isSummaryLoading={isSummaryLoading}
+              title="Sales"
+              value={kpis.salesToday}
+            />
+            <Kpi
+              isSummaryLoading={isSummaryLoading}
               title="Revenue (MTD)"
               value={kpis.revenueMtd}
               currencyCode={currencyCode}
             />
             <Kpi
+              isSummaryLoading={isSummaryLoading}
               title="Profit (MTD)"
               value={kpis.profitMtd}
               currencyCode={currencyCode}
             />
             <Kpi
+              isSummaryLoading={isSummaryLoading}
               title="Expenses (MTD)"
               value={kpis.expensesMtd}
               currencyCode={currencyCode}
@@ -170,7 +174,6 @@ const DashboardPage = () => {
                   </div>
                 ) : (
                   <ChartContainer
-                    id="sales-expenses"
                     config={{
                       sales: {
                         label: "Sales",
@@ -187,41 +190,8 @@ const DashboardPage = () => {
                         },
                       },
                     }}
-                    className="h-56"
                   >
-                    <Recharts.ResponsiveContainer>
-                      <Recharts.AreaChart
-                        data={[
-                          {
-                            name: "MTD",
-                            sales: summary?.totalRevenue ?? 0,
-                            expenses: summary?.expensesTotal ?? 0,
-                          },
-                        ]}
-                      >
-                        <Recharts.XAxis dataKey="name" />
-                        <Recharts.YAxis />
-                        <Recharts.CartesianGrid strokeDasharray="3 3" />
-                        <ChartTooltip
-                          content={<ChartTooltipContent indicator="dashed" />}
-                        />
-                        <ChartLegend />
-                        <Recharts.Area
-                          type="monotone"
-                          dataKey="sales"
-                          stroke="var(--color-sales)"
-                          fill="var(--color-sales)"
-                          fillOpacity={0.25}
-                        />
-                        <Recharts.Area
-                          type="monotone"
-                          dataKey="expenses"
-                          stroke="var(--color-expenses)"
-                          fill="var(--color-expenses)"
-                          fillOpacity={0.25}
-                        />
-                      </Recharts.AreaChart>
-                    </Recharts.ResponsiveContainer>
+                    <ChartLegendContent payload={kpis.salesToday} />
                   </ChartContainer>
                 )}
               </CardContent>
@@ -303,27 +273,7 @@ const DashboardPage = () => {
                     }}
                     className="h-56"
                   >
-                    <Recharts.ResponsiveContainer>
-                      <Recharts.BarChart data={topProducts}>
-                        <Recharts.XAxis
-                          dataKey="name"
-                          tick={{ fontSize: 12 }}
-                        />
-                        <Recharts.YAxis tick={{ fontSize: 12 }} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <ChartLegend />
-                        <Recharts.Bar
-                          dataKey="revenue"
-                          name="Revenue"
-                          fill="var(--color-revenue)"
-                        />
-                        <Recharts.Bar
-                          dataKey="qty"
-                          name="Qty"
-                          fill="var(--color-qty)"
-                        />
-                      </Recharts.BarChart>
-                    </Recharts.ResponsiveContainer>
+                    <ChartLegendContent />
                   </ChartContainer>
                 )}
               </CardContent>
@@ -366,41 +316,7 @@ const DashboardPage = () => {
                     }}
                     className="h-56"
                   >
-                    <Recharts.ResponsiveContainer>
-                      <Recharts.BarChart
-                        data={locPerf}
-                        margin={{ top: 8, right: 16, left: 8, bottom: 24 }}
-                      >
-                        <Recharts.XAxis
-                          dataKey="locationName"
-                          tick={{ fontSize: 11 }}
-                          tickFormatter={(v: string) =>
-                            v.length > 12 ? v.slice(0, 12) + "…" : v
-                          }
-                        />
-                        <Recharts.YAxis
-                          tickFormatter={(v: number) =>
-                            new Intl.NumberFormat(undefined, {
-                              style: "currency",
-                              currency: currencyCode,
-                            }).format(v)
-                          }
-                        />
-                        <Recharts.CartesianGrid strokeDasharray="3 3" />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <ChartLegend />
-                        <Recharts.Bar
-                          dataKey="revenue"
-                          name="Revenue"
-                          fill="var(--color-revenue)"
-                        />
-                        <Recharts.Bar
-                          dataKey="grossProfit"
-                          name="Gross Profit"
-                          fill="var(--color-grossProfit)"
-                        />
-                      </Recharts.BarChart>
-                    </Recharts.ResponsiveContainer>
+                    <ChartTooltipContent />
                   </ChartContainer>
                 )}
               </CardContent>
@@ -444,41 +360,7 @@ const DashboardPage = () => {
                     }}
                     className="h-56"
                   >
-                    <Recharts.ResponsiveContainer>
-                      <Recharts.BarChart
-                        data={custPerf}
-                        margin={{ top: 8, right: 16, left: 8, bottom: 24 }}
-                      >
-                        <Recharts.XAxis
-                          dataKey="customerName"
-                          tick={{ fontSize: 11 }}
-                          tickFormatter={(v: string) =>
-                            v.length > 12 ? v.slice(0, 12) + "…" : v
-                          }
-                        />
-                        <Recharts.YAxis
-                          tickFormatter={(v: number) =>
-                            new Intl.NumberFormat(undefined, {
-                              style: "currency",
-                              currency: currencyCode,
-                            }).format(v)
-                          }
-                        />
-                        <Recharts.CartesianGrid strokeDasharray="3 3" />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <ChartLegend />
-                        <Recharts.Bar
-                          dataKey="revenue"
-                          name="Revenue"
-                          fill="var(--color-revenue)"
-                        />
-                        <Recharts.Bar
-                          dataKey="grossProfit"
-                          name="Gross Profit"
-                          fill="var(--color-grossProfit)"
-                        />
-                      </Recharts.BarChart>
-                    </Recharts.ResponsiveContainer>
+                    <ChartLegendContent />
                   </ChartContainer>
                 )}
               </CardContent>
@@ -536,10 +418,12 @@ function Kpi({
   title,
   value,
   currencyCode,
+  isSummaryLoading,
 }: {
   title: string;
   value: number;
   currencyCode?: string;
+  isSummaryLoading?: boolean;
 }) {
   const display = currencyCode
     ? new Intl.NumberFormat(undefined, {
@@ -547,11 +431,20 @@ function Kpi({
         currency: currencyCode,
       }).format(value)
     : value.toLocaleString();
+
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="text-sm text-muted-foreground">{title}</div>
-        <div className="text-xl font-semibold">{display}</div>
+        {isSummaryLoading ? (
+          <div className="flex justify-center items-center">
+            <Spinner />
+          </div>
+        ) : (
+          <>
+            <div className="text-sm text-muted-foreground">{title}</div>
+            <div className="text-xl font-semibold">{display}</div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

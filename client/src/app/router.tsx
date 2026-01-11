@@ -1,42 +1,41 @@
 import { Routes, Route, Navigate } from "react-router";
 import { lazy, Suspense } from "react";
-import Loading from "@/components/common/Loading";
-import NewProduct from "@/pages/dashboard/inventory/NewProduct";
-import NewSalePage from "@/pages/dashboard/sales/NewSalePage";
-import PrivateRoute from "./guards/PrivateRoute";
 
-import OrgUIRoute from "./providers/org-ui-route";
-
+const Loading = lazy(() => import("@/components/common/Loading"));
 const HomePage = lazy(() => import("@/pages/Landing/HomePage"));
 const NotFoundPage = lazy(() => import("@/pages/not-found/NotFoundPage"));
 const AuthLayout = lazy(() => import("./layouts/AuthLayout"));
 const AuthPage = lazy(() => import("@/pages/auth/AuthPage"));
+const OrgUIRoute = lazy(() => import("./providers/org-ui-route"));
+const PrivateRoute = lazy(() => import("./guards/PrivateRoute"));
 const PrivateRootLayout = lazy(() => import("./layouts/PrivateRootLayout"));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage"));
 const OrganizationsPage = lazy(
-  () => import("@/pages/dashboard/organization/OrganizationsPage")
+  () => import("@/pages/organization/OrganizationsPage")
 );
 const OrganizationSettingsPage = lazy(
-  () => import("@/pages/dashboard/organization/OrganizationSettingsPage")
+  () => import("@/pages/organization/OrganizationSettingsPage")
 );
 const OrganizationMembersPage = lazy(
-  () => import("@/pages/dashboard/organization/OrganizationMembersPage")
+  () => import("@/pages/organization/OrganizationMembersPage")
 );
 const AccountPage = lazy(
-  () => import("@/pages/dashboard/organization/AccountPage")
+  () => import("@/pages/organization/AccountPage")
 );
 const AcceptInvitationPage = lazy(
-  () => import("@/pages/dashboard/organization/AcceptInvitationPage")
+  () => import("@/pages/organization/AcceptInvitationPage")
 );
 const OrganizationLayout = lazy(
-  () => import("@/pages/dashboard/organization/OrganizationLayout")
+  () => import("@/pages/organization/OrganizationLayout")
 );
-
 const InventoryPage = lazy(
-  () => import("@/pages/dashboard/inventory/InventoryPage")
+  () => import("@/pages/inventory/InventoryPage")
 );
 
-const SalesPage = lazy(() => import("@/pages/dashboard/sales/SalesPage"));
+const SalesPage = lazy(() => import("@/pages/sales/SalesPage"));
+const NewSalePage = lazy(() => import("@/pages/sales/NewSalePage"));
+const NewProduct = lazy(() => import("@/pages/inventory/NewProduct"));
+
 // Optional: stub pages for roadmap sections
 const ExpensesPage = () => <div className="p-6">Expenses</div>;
 const InvestorsPage = () => <div className="p-6">Investors</div>;

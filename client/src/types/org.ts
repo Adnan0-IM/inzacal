@@ -1,5 +1,3 @@
-export type Period = "daily" | "weekly" | "monthly";
-
 export type Organization = {
   id: string;
   name: string;

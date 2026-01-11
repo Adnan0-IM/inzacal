@@ -15,7 +15,7 @@ import {
 import { OrganizationSwitcher, UserButton } from "@daveyplate/better-auth-ui";
 import { nav, filterNavByRole, type Role } from "@/config/nav";
 import { useSession } from "@/features/auth/hooks/useSession";
-import { useOrganization } from "@/features/dashboard/hooks/useOrganization";
+import { useOrganization } from "@/features/auth/hooks/useOrganization";
 import { Home } from "lucide-react";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

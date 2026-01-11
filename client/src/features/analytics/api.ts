@@ -43,6 +43,7 @@ export type LocationPerf = {
   salesCount: number;
 };
 
+// which location performs the best
 export async function getLocationPerformance(params?: {
   from?: string;
   to?: string;

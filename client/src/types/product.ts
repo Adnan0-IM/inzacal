@@ -8,3 +8,11 @@ export type Product = {
   stock: number;
   minStock: number;
 };
+
+export type LowStockItem = {
+  id: string;
+  name: string;
+  stock: number;
+  minStock: number;
+};
+

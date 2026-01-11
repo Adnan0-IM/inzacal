@@ -14,15 +14,16 @@ import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import type { Product } from "@/types/product";
 import { useProducts } from "@/features/inventory/queries";
-import { useCreateSale, useCustomers, useLocations } from "@/features/sales/queries"
+import { useCreateSale } from "@/features/sales/queries";
 
 type CartItem = Product & { quantity: number };
 
 export default function NewSalePage() {
   const { data: products, isLoading } = useProducts();
   const { mutate: createSale, isPending } = useCreateSale();
-  const { data: customers = [] } = useCustomers();
-  const { data: locations = [] } = useLocations();
+
+  const customers: { id: string; name: string }[] = [];
+  const locations: { id: string; name: string }[] = [];
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
@@ -84,20 +85,23 @@ export default function NewSalePage() {
     0
   );
 
-  const handleCheckout = () => {
-    if (cart.length === 0) return;
-    createSale(
-      {
-        items: cart.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-        })),
-        customerId,
-        locationId,
-      },
-      { onSuccess: () => setCart([]) }
-    );
-  };
+const handleCheckout = () => {
+  if (cart.length === 0) return;
+  createSale(
+    {
+      items: cart.map((item) => ({
+        productId: item.id,
+        quantity: item.quantity,
+        // add required fields for server VAT and totals
+        unitPrice: Number(item.price),
+        unitCost: item.costPrice != null ? Number(item.costPrice) : undefined,
+      })),
+      customerId,
+      locationId,
+    },
+    { onSuccess: () => setCart([]) }
+  );
+};
 
   if (isLoading)
     return (
@@ -116,7 +120,7 @@ export default function NewSalePage() {
           onChange={(e) => setCustomerId(e.target.value || undefined)}
         >
           <option value="">Select customer (optional)</option>
-          {customers.map((c: any) => (
+          {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
@@ -128,7 +132,7 @@ export default function NewSalePage() {
           onChange={(e) => setLocationId(e.target.value || undefined)}
         >
           <option value="">Select location (optional)</option>
-          {locations.map((l: any) => (
+          {locations.map((l) => (
             <option key={l.id} value={l.id}>
               {l.name}
             </option>
@@ -273,10 +277,13 @@ export default function NewSalePage() {
               <span>Total</span>
               <span>${totalAmount.toFixed(2)}</span>
             </div>
+            <div className="text-xs text-muted-foreground">
+              Please select a location to complete this sale.
+            </div>
             <Button
               className="w-full"
               size="lg"
-              disabled={cart.length === 0 || isPending}
+              disabled={cart.length === 0 || isPending || !locationId}
               onClick={handleCheckout}
             >
               {isPending ? "Processing..." : "Complete Sale"}
