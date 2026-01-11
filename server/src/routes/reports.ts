@@ -25,6 +25,26 @@ function periodSince(period: "weekly" | "monthly" | "quarterly" | "yearly") {
   return new Date(now.getTime() - ms);
 }
 
+/**
+ * @openapi
+ * /api/reports/sales.csv:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Export sales CSV for a period
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [weekly, monthly, quarterly, yearly]
+ *     responses:
+ *       200:
+ *         description: CSV content
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ */
 reportsRouter.get("/sales.csv", async (req, res) => {
   const orgId = req.orgId;
   if (!orgId) return res.status(401).json({ error: "Unauthorized" });
@@ -44,13 +64,6 @@ reportsRouter.get("/sales.csv", async (req, res) => {
 
   const sales = await prisma.sale.findMany({
     where: { organizationId: orgId, createdAt: { gte: since } },
-    select: {
-      id: true,
-      createdAt: true,
-      totalAmount: true,
-      customerId: true,
-      locationId: true,
-    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -67,12 +80,15 @@ reportsRouter.get("/sales.csv", async (req, res) => {
     );
   }
 
-  let csv = "Sale ID,Date,Customer ID,Location ID,Revenue,COGS,Gross Profit\n";
+  let csv =
+    "Sale ID,Date,Customer ID,Location ID,Gross Sales,VAT,Net Sales,COGS,Gross Profit\n";
   for (const s of sales) {
-    const rev = Number(s.totalAmount ?? 0);
+    const gross = Number((s as any).grossAmount ?? 0);
+    const vat = Number((s as any).taxAmount ?? 0);
+    const netSales = gross; // excluding VAT
     const cogs = cogsBySale.get(s.id) ?? 0;
-    const gp = rev - cogs;
-    csv += `${s.id},${s.createdAt.toISOString()},${s.customerId ?? ""},${s.locationId ?? ""},${rev},${cogs},${gp}\n`;
+    const gp = netSales - cogs;
+    csv += `${s.id},${s.createdAt.toISOString()},${s.customerId ?? ""},${s.locationId ?? ""},${gross},${vat},${netSales},${cogs},${gp}\n`;
   }
 
   res.setHeader("Content-Type", "text/csv");
@@ -84,6 +100,32 @@ reportsRouter.get("/sales.csv", async (req, res) => {
 });
 
 // New: PDF export
+/**
+ * @openapi
+ * /api/reports/sales.pdf:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Export sales PDF for a period
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [weekly, monthly, quarterly, yearly]
+ *       - in: query
+ *         name: currency
+ *         schema:
+ *           type: string
+ *           default: NGN
+ *     responses:
+ *       200:
+ *         description: PDF content
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ */
 reportsRouter.get("/sales.pdf", async (req, res) => {
   const orgId = req.orgId;
   if (!orgId) return res.status(401).json({ error: "Unauthorized" });
@@ -96,13 +138,6 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
 
   const sales = await prisma.sale.findMany({
     where: { organizationId: orgId, createdAt: { gte: since } },
-    select: {
-      id: true,
-      createdAt: true,
-      totalAmount: true,
-      customerId: true,
-      locationId: true,
-    },
     orderBy: { createdAt: "desc" },
   });
   const lineItems = await prisma.saleLineItem.findMany({
@@ -119,11 +154,15 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
   }
 
   const totalRevenue = sales.reduce(
-    (sum: number, s) => sum + Number(s.totalAmount ?? 0),
+    (sum: number, s) => sum + Number((s as any).grossAmount ?? 0),
     0
   );
   const totalCogs = sales.reduce(
     (sum: number, s) => sum + (cogsBySale.get(s.id) ?? 0),
+    0
+  );
+  const totalTax = sales.reduce(
+    (sum: number, s) => sum + Number((s as any).taxAmount ?? 0),
     0
   );
   const grossProfit = totalRevenue - totalCogs;
@@ -162,8 +201,9 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
   doc.fontSize(12).text("Summary", { underline: true });
   doc.moveDown(0.5);
   doc.fontSize(11);
-  doc.text(`Total revenue: ${fmt(totalRevenue)}`);
+  doc.text(`Gross sales (ex-VAT): ${fmt(totalRevenue)}`);
   doc.text(`COGS: ${fmt(totalCogs)}`);
+  doc.text(`VAT collected: ${fmt(totalTax)}`);
   doc.text(`Gross profit: ${fmt(grossProfit)}`);
   doc.text(`Sales count: ${sales.length}`);
   doc.moveDown();
@@ -172,13 +212,22 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
   doc.fontSize(12).text("Sales", { underline: true });
   doc.moveDown(0.5);
   doc.fontSize(10);
-  const colX = { id: 40, date: 140, cust: 250, loc: 360, rev: 440, gp: 520 };
+  const colX = {
+    id: 40,
+    date: 140,
+    cust: 230,
+    loc: 320,
+    gross: 420,
+    vat: 500,
+    gp: 560,
+  };
   doc
     .text("ID", colX.id, doc.y, { continued: true })
     .text("Date", colX.date, doc.y, { continued: true })
     .text("Customer", colX.cust, doc.y, { continued: true })
     .text("Location", colX.loc, doc.y, { continued: true })
-    .text("Revenue", colX.rev, doc.y, { continued: true })
+    .text("Gross", colX.gross, doc.y, { continued: true })
+    .text("VAT", colX.vat, doc.y, { continued: true })
     .text("Gross P.", colX.gp, doc.y);
   doc.moveDown(0.25);
   doc.moveTo(40, doc.y).lineTo(560, doc.y).stroke();
@@ -208,9 +257,10 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
 
   // Rows
   for (const s of sales) {
-    const rev = Number(s.totalAmount ?? 0);
+    const gross = Number((s as any).grossAmount ?? 0);
     const cogs = cogsBySale.get(s.id) ?? 0;
-    const gp = rev - cogs;
+    const vatAmt = Number((s as any).taxAmount ?? 0);
+    const gp = gross - cogs;
     const y = doc.y;
     doc
       .text(s.id.slice(0, 8), colX.id, y, { continued: true })
@@ -223,7 +273,8 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
       .text(lname.get(s.locationId ?? "") ?? "", colX.loc, y, {
         continued: true,
       })
-      .text(fmt(rev), colX.rev, y, { continued: true })
+      .text(fmt(gross), colX.gross, y, { continued: true })
+      .text(fmt(vatAmt), colX.vat, y, { continued: true })
       .text(fmt(gp), colX.gp, y);
     doc.moveDown(0.2);
     if (doc.y > 760) {
