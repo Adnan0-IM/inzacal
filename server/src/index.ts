@@ -11,9 +11,12 @@ import { locationsRouter } from "./routes/locations.js";
 import { fxRouter } from "./routes/fx.js";
 import { notificationsRouter } from "./routes/notifications.js";
 import { reportsRouter } from "./routes/reports.js";
+import { taxRouter } from "./routes/tax.js";
 import { corsRouter } from "./utils/cors.js";
 import "./utils/keep-awake.js";
 import "./jobs/policyFeed.js";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./swagger.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
@@ -40,6 +43,10 @@ app.use("/api/locations", authorized, locationsRouter);
 app.use("/api/fx", authorized, fxRouter);
 app.use("/api/notifications", authorized, notificationsRouter);
 app.use("/api/reports", authorized, reportsRouter);
+app.use("/api/tax", authorized, taxRouter);
+
+// Swagger UI (public)
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Health
 app.get("/health", (_, res) => {

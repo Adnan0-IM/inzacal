@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma.js";
 export const getCustomers = async (req: Request, res: Response) => {
   if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
   const customers = await prisma.customer.findMany({
-    where: { sales: { some: { organizationId: req.orgId } } },
+    where: { organizationId: req.orgId },
     orderBy: { createdAt: "desc" },
   });
   res.json(customers);
@@ -14,28 +14,31 @@ export const getCustomer = async (req: Request, res: Response) => {
   const { id } = req.params;
   if (!id) return res.status(401).json({ error: "Id is required" });
   if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
-  const customers = await prisma.customer.findMany({
-    where: { id, sales: { some: { organizationId: req.orgId } } },
-    orderBy: { createdAt: "desc" },
+  const customer = await prisma.customer.findFirst({
+    where: { id, organizationId: req.orgId },
   });
-  res.json(customers);
+  if (!customer) return res.status(404).json({ error: "Not found" });
+  res.json(customer);
 };
 
 export const createCustomers = async (req: Request, res: Response) => {
   if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
-  const { name, email, phone, city, country, lat, lng } = req.body ?? {};
+  const { name, email, phone, city, country, state, lga, lat, lng } =
+    req.body ?? {};
   if (!name) return res.status(400).json({ error: "Name required" });
-  const customer = await prisma.customer.create({
-    data: {
-      name,
-      email,
-      phone,
-      city,
-      country,
-      lat,
-      lng,
-      organizationId: req.orgId,
-    },
-  });
+  const data: any = {
+    name,
+    email,
+    phone,
+    city,
+    country,
+    lat,
+    lng,
+    organizationId: req.orgId,
+  };
+  if (typeof state !== "undefined") data.state = state;
+  if (typeof lga !== "undefined") data.lga = lga;
+
+  const customer = await prisma.customer.create({ data });
   res.status(201).json(customer);
 };

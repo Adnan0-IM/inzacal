@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "Product" ADD COLUMN     "taxExempt" BOOLEAN NOT NULL DEFAULT false;
+
+-- AlterTable
+ALTER TABLE "Sale" ADD COLUMN     "grossAmount" DECIMAL(65,30) NOT NULL DEFAULT 0,
+ADD COLUMN     "taxableAmount" DECIMAL(65,30) NOT NULL DEFAULT 0,
+ADD COLUMN     "vatRate" DECIMAL(65,30) NOT NULL DEFAULT 0;

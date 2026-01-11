@@ -1,6 +1,7 @@
 import type { Response, Request } from "express";
 import { prisma } from "../lib/prisma.js";
 import { Prisma } from "../generated/prisma/client.js";
+import { computeVatForSale } from "../services/tax.js";
 
 export const getSales = async (req: Request, res: Response) => {
   const organizationId = req.orgId;
@@ -58,34 +59,110 @@ export const createSale = async (req: Request, res: Response) => {
     return res.status(401).json({ error: "Unauthorized" });
   if (!Array.isArray(items) || items.length === 0)
     return res.status(400).json({ error: "No items" });
+  // For branch performance and per-location stock management, require location
+  if (!locationId)
+    return res.status(400).json({ error: "Location is required for sales" });
 
-  // Compute total from items
-  const totalAmount = items.reduce(
-    (acc: number, it: any) => acc + Number(it.unitPrice) * Number(it.quantity),
-    0
-  );
+  try {
+    // Compute total from items
+    const totalAmount = items.reduce(
+      (acc: number, it: any) =>
+        acc + Number(it.unitPrice) * Number(it.quantity),
+      0
+    );
 
-  const sale = await prisma.sale.create({
-    data: {
-      organizationId,
-      userId,
-      customerId: customerId ?? null,
-      locationId: locationId ?? null,
-      totalAmount,
-      items: {
-        create: items.map((it: any) => ({
-          productId: it.productId,
-          quantity: Number(it.quantity),
-          unitPrice: it.unitPrice, // Decimal-compatible
-          unitCost: it.unitCost ?? null,
-        })),
+    const productIds: string[] = items.map((it: any) => it.productId);
+
+    // Validate availability at the required location
+    const stocks = await prisma.productStock.findMany({
+      where: {
+        locationId,
+        productId: { in: productIds },
       },
-    },
-    include: { items: true },
-  });
+      select: { productId: true, quantity: true },
+    });
+    const stockMap = new Map(stocks.map((s) => [s.productId, s.quantity]));
 
-  res.status(201).json(sale);
+    for (const it of items) {
+      const requested = Number(it.quantity);
+      const available = stockMap.get(it.productId);
+      if (requested <= 0) {
+        return res
+          .status(400)
+          .json({ error: `Invalid quantity for product ${it.productId}` });
+      }
+      if (available == null) {
+        return res.status(400).json({
+          error: `Product ${it.productId} is not stocked at the selected location`,
+        });
+      }
+      if (available < requested) {
+        return res.status(400).json({
+          error: `Insufficient stock for product ${it.productId} at selected location`,
+        });
+      }
+    }
+
+    // Compute VAT and amounts using Decimal math
+    const vat = await computeVatForSale({
+      organizationId,
+      locationId,
+      items: items.map((it: any) => ({
+        productId: it.productId,
+        quantity: Number(it.quantity),
+        unitPrice: it.unitPrice,
+      })),
+    });
+    const totalAmountDec = vat.grossAmount.add(vat.vatAmount);
+
+    // Perform sale creation and inventory update atomically
+    const sale = await prisma.$transaction(async (tx) => {
+      const created = await tx.sale.create({
+        data: {
+          organizationId,
+          userId,
+          customerId: customerId ?? null,
+          locationId: locationId ?? null,
+          totalAmount: totalAmountDec,
+          grossAmount: vat.grossAmount,
+          taxableAmount: vat.taxableAmount,
+          vatRate: vat.vatRate,
+          taxAmount: vat.vatAmount,
+          items: {
+            create: items.map((it: any) => ({
+              productId: it.productId,
+              quantity: Number(it.quantity),
+              unitPrice: it.unitPrice,
+              unitCost: it.unitCost ?? null,
+            })),
+          },
+        } as any,
+        include: { items: true },
+      });
+
+      // Decrement per-location inventory and aggregate product stock
+      for (const it of items) {
+        const qty = Number(it.quantity);
+        await tx.productStock.update({
+          where: {
+            productId_locationId: { productId: it.productId, locationId },
+          },
+          data: { quantity: { decrement: qty } },
+        });
+        await tx.product.update({
+          where: { id: it.productId },
+          data: { stock: { decrement: qty } },
+        });
+      }
+
+      return created;
+    });
+  } catch (error) {
+    console.log("Failed to create sale", error);
+    res.status(500).json({ error: "Failed to create sales" });
+  }
 };
+
 export const salesSummary = async (req: Request, res: Response) => {
   const organizationId = req.orgId;
   const { period = "daily" } = req.query as {
@@ -155,11 +232,13 @@ export const getRecents = async (req: Request, res: Response) => {
   });
   console.log("recent sales count:", sales.length);
   res.json(
-    sales.map((s: { id: string; createdAt: Date; totalAmount: Prisma.Decimal }) => ({
-      id: s.id,
-      ref: s.id.slice(0, 8),
-      date: s.createdAt,
-      amount: Number(s.totalAmount ?? 0),
-    }))
+    sales.map(
+      (s: { id: string; createdAt: Date; totalAmount: Prisma.Decimal }) => ({
+        id: s.id,
+        ref: s.id.slice(0, 8),
+        date: s.createdAt,
+        amount: Number(s.totalAmount ?? 0),
+      })
+    )
   );
 };

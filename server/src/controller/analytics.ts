@@ -51,14 +51,21 @@ export async function analyticsSummary({ period, orgId }: SummaryParams) {
     include: { items: true },
   });
   const expenses = await prisma.expense.findMany({ where: expenseWhere });
+  const taxSales = await prisma.sale.findMany({
+    where: saleWhere,
+    select: { taxAmount: true },
+  });
 
   let totalRevenue = 0;
   let grossProfit = 0;
   for (const s of sales) {
-    const lineRevenue = s.items.reduce(
-      (acc, it) => acc + Number(it.unitPrice) * it.quantity,
-      0
-    );
+    // Use persisted grossAmount if available, else compute from items
+    const lineRevenue = (s as any).grossAmount
+      ? Number((s as any).grossAmount)
+      : s.items.reduce(
+          (acc, it) => acc + Number(it.unitPrice) * it.quantity,
+          0
+        );
     const lineCost = s.items.reduce(
       (acc, it) => acc + Number(it.unitCost ?? 0) * it.quantity,
       0
@@ -84,6 +91,12 @@ export async function analyticsSummary({ period, orgId }: SummaryParams) {
     0
   );
 
+  const taxTotal = taxSales.reduce(
+    (a: number, s: { taxAmount: Prisma.Decimal | null }) =>
+      a + Number(s.taxAmount ?? 0),
+    0
+  );
+
   // low stock: stock < (minStock || 5)
   const products = await prisma.product.findMany({
     where: orgId ? { organizationId: orgId } : {},
@@ -93,12 +106,21 @@ export async function analyticsSummary({ period, orgId }: SummaryParams) {
     (p: { stock: number; minStock: number }) => p.stock < (p.minStock ?? 5)
   ).length;
 
+  // Income tax estimate (does not alter persisted data)
+  const incomeTaxRate = Number(process.env.INCOME_TAX_RATE ?? 0.3);
+  const profitBeforeTax = grossProfit - expensesTotal;
+  const estimatedIncomeTax = Math.max(0, profitBeforeTax * incomeTaxRate);
+  const profitAfterTax = profitBeforeTax - estimatedIncomeTax;
+
   return {
     period: period || "monthly",
     totalSales: sales.length,
-    totalRevenue,
+    totalRevenue, // excludes VAT
     grossProfit,
-    netProfit: grossProfit - expensesTotal,
+    taxTotal, // VAT collected
+    profitBeforeTax,
+    estimatedIncomeTax,
+    profitAfterTax,
     expensesTotal,
     lowStockCount,
   };
@@ -322,7 +344,16 @@ export const customerPerformance = async (req: Request, res: Response) => {
       id: true,
       totalAmount: true,
       customerId: true,
-      customer: { select: { id: true, name: true, city: true, country: true } },
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          state: true,
+          lga: true,
+          country: true,
+        },
+      },
     },
   });
 
@@ -335,6 +366,8 @@ export const customerPerformance = async (req: Request, res: Response) => {
         name: string;
         id: string;
         city: string | null;
+        state: string | null;
+        lga: string | null;
         country: string | null;
       } | null;
     }) => s.id
@@ -353,6 +386,8 @@ export const customerPerformance = async (req: Request, res: Response) => {
       customerId: string | null;
       customerName: string;
       city?: string | null;
+      state?: string | null;
+      lga?: string | null;
       country?: string | null;
       revenue: number;
       salesCount: number;
@@ -366,6 +401,8 @@ export const customerPerformance = async (req: Request, res: Response) => {
       customerId: s.customerId ?? null,
       customerName: s.customer?.name ?? "Unassigned",
       city: s.customer?.city ?? null,
+      state: s.customer?.state ?? null,
+      lga: s.customer?.lga ?? null,
       country: s.customer?.country ?? null,
       revenue: 0,
       salesCount: 0,
@@ -401,6 +438,8 @@ export const customerPerformance = async (req: Request, res: Response) => {
       customerId: x.customerId,
       customerName: x.customerName,
       city: x.city,
+      state: x.state,
+      lga: x.lga,
       country: x.country,
       revenue: x.revenue,
       salesCount: x.salesCount,
