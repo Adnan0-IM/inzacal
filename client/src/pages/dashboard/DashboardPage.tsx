@@ -25,6 +25,7 @@ import {
   useDownloadSalesPdf,
 } from "@/features/reports/queries";
 import type { ReportPeriod } from "@/types/reports";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const DashboardPage = () => {
   // console.debug("geo location", location);
@@ -444,16 +445,18 @@ function Kpi({
 
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-4 space-y-2">
+        <div className="text-sm text-muted-foreground">{title}</div>
         {isSummaryLoading ? (
-          <div className="flex justify-center items-center">
-            <Spinner />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-32" />
+            <div className="flex items-center gap-2">
+              <Spinner />
+              <span className="text-xs text-muted-foreground">Loading…</span>
+            </div>
           </div>
         ) : (
-          <>
-            <div className="text-sm text-muted-foreground">{title}</div>
-            <div className="text-xl font-semibold">{display}</div>
-          </>
+          <div className="text-xl font-semibold">{display}</div>
         )}
       </CardContent>
     </Card>
