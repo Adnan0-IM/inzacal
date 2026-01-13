@@ -73,7 +73,7 @@ export const createSale = async (req: Request, res: Response) => {
 
     const productIds: string[] = items.map((it: any) => it.productId);
 
-    // Validate availability at the required location
+    // Fetch location-specific stocks
     const stocks = await prisma.productStock.findMany({
       where: {
         locationId,
@@ -83,22 +83,32 @@ export const createSale = async (req: Request, res: Response) => {
     });
     const stockMap = new Map(stocks.map((s) => [s.productId, s.quantity]));
 
+    // Also fetch general product stock for fallback
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, stock: true },
+    });
+    const productStockMap = new Map(products.map((p) => [p.id, p.stock]));
+
     for (const it of items) {
       const requested = Number(it.quantity);
-      const available = stockMap.get(it.productId);
+      // Check location-specific stock first, fallback to product general stock
+      const available =
+        stockMap.get(it.productId) ?? productStockMap.get(it.productId);
+
       if (requested <= 0) {
         return res
           .status(400)
           .json({ error: `Invalid quantity for product ${it.productId}` });
       }
-      if (available == null) {
+      if (available == null || available === 0) {
         return res.status(400).json({
           error: `Product ${it.productId} is not stocked at the selected location`,
         });
       }
       if (available < requested) {
         return res.status(400).json({
-          error: `Insufficient stock for product ${it.productId} at selected location`,
+          error: `Insufficient stock for product ${it.productId} at selected location (available: ${available})`,
         });
       }
     }
@@ -143,12 +153,40 @@ export const createSale = async (req: Request, res: Response) => {
       // Decrement per-location inventory and aggregate product stock
       for (const it of items) {
         const qty = Number(it.quantity);
-        await tx.productStock.update({
+
+        // Try to update location-specific stock, create if doesn't exist
+        const existingStock = await tx.productStock.findUnique({
           where: {
             productId_locationId: { productId: it.productId, locationId },
           },
-          data: { quantity: { decrement: qty } },
         });
+
+        if (existingStock) {
+          await tx.productStock.update({
+            where: {
+              productId_locationId: { productId: it.productId, locationId },
+            },
+            data: { quantity: { decrement: qty } },
+          });
+        } else {
+          // If no location stock exists, create it with negative quantity
+          // (implying stock came from general product stock)
+          const product = await tx.product.findUnique({
+            where: { id: it.productId },
+            select: { stock: true },
+          });
+          if (product) {
+            await tx.productStock.create({
+              data: {
+                productId: it.productId,
+                locationId,
+                quantity: product.stock - qty,
+              },
+            });
+          }
+        }
+
+        // Always decrement the general product stock
         await tx.product.update({
           where: { id: it.productId },
           data: { stock: { decrement: qty } },
