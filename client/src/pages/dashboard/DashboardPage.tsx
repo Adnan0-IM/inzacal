@@ -14,9 +14,12 @@ import {
 import { useRecentSales } from "@/features/sales/queries";
 import {
   ChartContainer,
+  ChartLegend,
   ChartTooltipContent,
+  ChartTooltip,
   ChartLegendContent,
 } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { LowStockItem } from "@/types/product";
 import type { Period } from "@/types/sales";
 import { Spinner } from "@/components/ui/spinner";
@@ -82,6 +85,48 @@ const DashboardPage = () => {
     expensesMtd: summary?.expensesTotal ?? 0,
     lowStockCount: summary?.lowStockCount ?? 0,
   };
+
+  const salesVsExpensesData = useMemo(
+    () => [
+      {
+        name: "MTD",
+        sales: kpis.revenueMtd,
+        expenses: kpis.expensesMtd,
+      },
+    ],
+    [kpis.revenueMtd, kpis.expensesMtd]
+  );
+
+  const topProductsData = useMemo(
+    () =>
+      topProducts.map((p) => ({
+        name: p.name,
+        revenue: p.revenue,
+        qty: p.qty,
+      })),
+    [topProducts]
+  );
+
+  const locPerfData = useMemo(
+    () =>
+      locPerf.map((l) => ({
+        name: l.locationName,
+        revenue: l.revenue,
+        grossProfit: l.grossProfit,
+      })),
+    [locPerf]
+  );
+
+  const custPerfData = useMemo(
+    () =>
+      custPerf.map((c) => ({
+        name: c.customerName,
+        revenue: c.revenue,
+        grossProfit: c.grossProfit,
+      })),
+    [custPerf]
+  );
+
   return (
     <div className="container mx-auto p-6 space-y-8">
       <PageHeader title={name} subtitle="Welcome" />
@@ -201,8 +246,30 @@ const DashboardPage = () => {
                         },
                       },
                     }}
+                    className="h-56"
                   >
-                    <ChartLegendContent payload={kpis.salesToday} />
+                    <BarChart data={salesVsExpensesData}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                      />
+                      <YAxis hide />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Bar
+                        dataKey="sales"
+                        fill="var(--color-sales)"
+                        radius={4}
+                      />
+                      <Bar
+                        dataKey="expenses"
+                        fill="var(--color-expenses)"
+                        radius={4}
+                      />
+                    </BarChart>
                   </ChartContainer>
                 )}
               </CardContent>
@@ -284,7 +351,27 @@ const DashboardPage = () => {
                     }}
                     className="h-56"
                   >
-                    <ChartLegendContent />
+                    <BarChart data={topProductsData}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        interval={0}
+                        angle={-20}
+                        height={40}
+                      />
+                      <YAxis hide />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Bar
+                        dataKey="revenue"
+                        fill="var(--color-revenue)"
+                        radius={4}
+                      />
+                      <Bar dataKey="qty" fill="var(--color-qty)" radius={4} />
+                    </BarChart>
                   </ChartContainer>
                 )}
               </CardContent>
@@ -327,7 +414,31 @@ const DashboardPage = () => {
                     }}
                     className="h-56"
                   >
-                    <ChartTooltipContent />
+                    <BarChart data={locPerfData}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        interval={0}
+                        angle={-20}
+                        height={40}
+                      />
+                      <YAxis hide />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Bar
+                        dataKey="revenue"
+                        fill="var(--color-revenue)"
+                        radius={4}
+                      />
+                      <Bar
+                        dataKey="grossProfit"
+                        fill="var(--color-grossProfit)"
+                        radius={4}
+                      />
+                    </BarChart>
                   </ChartContainer>
                 )}
               </CardContent>
@@ -371,7 +482,31 @@ const DashboardPage = () => {
                     }}
                     className="h-56"
                   >
-                    <ChartLegendContent />
+                    <BarChart data={custPerfData}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        interval={0}
+                        angle={-20}
+                        height={40}
+                      />
+                      <YAxis hide />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Bar
+                        dataKey="revenue"
+                        fill="var(--color-revenue)"
+                        radius={4}
+                      />
+                      <Bar
+                        dataKey="grossProfit"
+                        fill="var(--color-grossProfit)"
+                        radius={4}
+                      />
+                    </BarChart>
                   </ChartContainer>
                 )}
               </CardContent>
