@@ -66,6 +66,23 @@ export const nav: NavGroup[] = [
         to: "/dashboard/reports",
         roles: ["owner", "admin", "accountant"],
       },
+      {
+        id: "tax",
+        label: "Tax Rules",
+        to: "/dashboard/tax",
+        roles: ["owner", "admin", "accountant"],
+      },
+      {
+        id: "fx",
+        label: "FX",
+        to: "/dashboard/fx",
+        roles: ["owner", "admin", "accountant"],
+      },
+      {
+        id: "notifications",
+        label: "Notifications",
+        to: "/dashboard/notifications",
+      },
     ],
   },
   {
@@ -95,7 +112,11 @@ export const nav: NavGroup[] = [
     isActive: false,
     items: [
       { id: "account-settings", label: "Settings", to: "/account/settings" },
-      {id:"organizations-settings", label:"Organizations", to:"/account/organizations" },
+      {
+        id: "organizations-settings",
+        label: "Organizations",
+        to: "/account/organizations",
+      },
     ],
   },
 ];
@@ -108,10 +129,12 @@ export function canView(role: Role | undefined, item: NavItem): boolean {
 
 export function filterNavByRole(groups: NavGroup[], role?: Role): NavGroup[] {
   if (!role) {
-    return groups.map((g) => ({
-      ...g,
-      items: g.items.filter((i) => !i.roles),
-    })).filter((g) => g.label !== "Organization");
+    return groups
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((i) => !i.roles),
+      }))
+      .filter((g) => g.label !== "Organization");
   }
   return groups
     .map((g) => ({

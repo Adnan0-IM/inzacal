@@ -19,27 +19,27 @@ const OrganizationSettingsPage = lazy(
 const OrganizationMembersPage = lazy(
   () => import("@/pages/organization/OrganizationMembersPage")
 );
-const AccountPage = lazy(
-  () => import("@/pages/organization/AccountPage")
-);
+const AccountPage = lazy(() => import("@/pages/organization/AccountPage"));
 const AcceptInvitationPage = lazy(
   () => import("@/pages/organization/AcceptInvitationPage")
 );
 const OrganizationLayout = lazy(
   () => import("@/pages/organization/OrganizationLayout")
 );
-const InventoryPage = lazy(
-  () => import("@/pages/inventory/InventoryPage")
-);
+const InventoryPage = lazy(() => import("@/pages/inventory/InventoryPage"));
 
 const SalesPage = lazy(() => import("@/pages/sales/SalesPage"));
 const NewSalePage = lazy(() => import("@/pages/sales/NewSalePage"));
 const NewProduct = lazy(() => import("@/pages/inventory/NewProduct"));
 
-// Optional: stub pages for roadmap sections
-const ExpensesPage = () => <div className="p-6">Expenses</div>;
+const ExpensesPage = lazy(() => import("@/pages/expenses/ExpensesPage"));
+const TaxPage = lazy(() => import("@/pages/tax/TaxPage"));
+const FxPage = lazy(() => import("@/pages/fx/FxPage"));
+const NotificationsPage = lazy(
+  () => import("@/pages/notifications/NotificationsPage")
+);
+const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage"));
 const InvestorsPage = () => <div className="p-6">Investors</div>;
-const ReportsPage = () => <div className="p-6">Reports</div>;
 
 const AppRouter = () => {
   return (
@@ -58,6 +58,9 @@ const AppRouter = () => {
                 <Route path="sales" element={<SalesPage />} />
                 <Route path="sales/new" element={<NewSalePage />} />
                 <Route path="expenses" element={<ExpensesPage />} />
+                <Route path="tax" element={<TaxPage />} />
+                <Route path="fx" element={<FxPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="investors" element={<InvestorsPage />} />
                 <Route path="reports" element={<ReportsPage />} />
               </Route>

@@ -17,10 +17,14 @@ import {
   ChartTooltipContent,
   ChartLegendContent,
 } from "@/components/ui/chart";
-import { SERVER_URL } from "@/config/constants"; // add
 import type { LowStockItem } from "@/types/product";
 import type { Period } from "@/types/sales";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  useDownloadSalesCsv,
+  useDownloadSalesPdf,
+} from "@/features/reports/queries";
+import type { ReportPeriod } from "@/types/reports";
 
 const DashboardPage = () => {
   // console.debug("geo location", location);
@@ -61,6 +65,11 @@ const DashboardPage = () => {
 
   const name = session?.user?.name ?? "guest";
   const currencyCode = "NGN";
+
+  const reportPeriod: ReportPeriod = period === "daily" ? "weekly" : period;
+
+  const downloadCsv = useDownloadSalesCsv();
+  const downloadPdf = useDownloadSalesPdf();
 
   const lowLoading = false;
   const lowStock: LowStockItem[] = [];
@@ -113,26 +122,27 @@ const DashboardPage = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button disabled={true} className="bg-accent hover:bg-secondary">
-                <a
-                  href={`${SERVER_URL}/api/reports/sales.csv?period=${period}`}
-                  className="text-xs "
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Export CSV ({period})
-                </a>
+              <Button
+                variant="outline"
+                disabled={downloadCsv.isPending}
+                onClick={() => downloadCsv.mutate({ period: reportPeriod })}
+              >
+                {downloadCsv.isPending
+                  ? "Exporting…"
+                  : `Export CSV (${period})`}
               </Button>
-              <Button disabled={true}>
-                {" "}
-                <a
-                  href={`${SERVER_URL}/api/reports/sales.pdf?period=${period}&currency=${currencyCode}`}
-                  className="text-xs "
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Export PDF ({period})
-                </a>
+              <Button
+                disabled={downloadPdf.isPending}
+                onClick={() =>
+                  downloadPdf.mutate({
+                    period: reportPeriod,
+                    currency: currencyCode,
+                  })
+                }
+              >
+                {downloadPdf.isPending
+                  ? "Exporting…"
+                  : `Export PDF (${period})`}
               </Button>
             </div>
           </div>

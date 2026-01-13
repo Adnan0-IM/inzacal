@@ -1,0 +1,89 @@
+import PageHeader from "@/components/common/PageHeader";
+import EmptyState from "@/components/common/EmptyState";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  useMarkNotificationRead,
+  useNotifications,
+} from "@/features/notifications/queries";
+
+export default function NotificationsPage() {
+  const { data: notifications, isLoading } = useNotifications();
+  const { mutate: markRead, isPending } = useMarkNotificationRead();
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <PageHeader title="Notifications" subtitle="Updates and alerts" />
+
+      <Card>
+        <CardContent className="p-4">
+          {isLoading ? (
+            <div className="flex justify-center py-10">
+              <Spinner />
+            </div>
+          ) : !notifications || notifications.length === 0 ? (
+            <EmptyState
+              title="No notifications"
+              description="You're all caught up."
+              variant="card"
+              align="start"
+            />
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {notifications.map((n) => {
+                    const unread = !n.readAt;
+                    return (
+                      <TableRow key={n.id}>
+                        <TableCell>
+                          {unread ? (
+                            <Badge variant="default">Unread</Badge>
+                          ) : (
+                            <Badge variant="secondary">Read</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{n.type}</TableCell>
+                        <TableCell>
+                          {new Date(n.createdAt).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!unread || isPending}
+                            onClick={() => markRead(n.id)}
+                          >
+                            Mark read
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
