@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,15 +15,36 @@ import { Spinner } from "@/components/ui/spinner";
 import type { Product } from "@/types/product";
 import { useProducts } from "@/features/inventory/queries";
 import { useCreateSale } from "@/features/sales/queries";
+import { useCustomers } from "@/features/customers/queries";
+import { useLocations } from "@/features/locations/queries";
 
 type CartItem = Product & { quantity: number };
+type SimpleIdName = { id: string; name: string };
 
 export default function NewSalePage() {
   const { data: products, isLoading } = useProducts();
   const { mutate: createSale, isPending } = useCreateSale();
 
-  const customers: { id: string; name: string }[] = [];
-  const locations: { id: string; name: string }[] = [];
+  const {
+    data: customersData,
+    isLoading: customersLoading,
+    isError: customersError,
+  } = useCustomers();
+  const {
+    data: locationsData,
+    isLoading: locationsLoading,
+    isError: locationsError,
+  } = useLocations();
+
+  const customers: SimpleIdName[] = useMemo(
+    () => (customersData || []).map((c) => ({ id: c.id, name: c.name })),
+    [customersData]
+  );
+  const locations: SimpleIdName[] = useMemo(
+    () => (locationsData || []).map((l) => ({ id: l.id, name: l.name })),
+    [locationsData]
+  );
+  const listsLoading = customersLoading || locationsLoading;
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
@@ -85,23 +106,23 @@ export default function NewSalePage() {
     0
   );
 
-const handleCheckout = () => {
-  if (cart.length === 0) return;
-  createSale(
-    {
-      items: cart.map((item) => ({
-        productId: item.id,
-        quantity: item.quantity,
-        // add required fields for server VAT and totals
-        unitPrice: Number(item.price),
-        unitCost: item.costPrice != null ? Number(item.costPrice) : undefined,
-      })),
-      customerId,
-      locationId,
-    },
-    { onSuccess: () => setCart([]) }
-  );
-};
+  const handleCheckout = () => {
+    if (cart.length === 0) return;
+    createSale(
+      {
+        items: cart.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          // add required fields for server VAT and totals
+          unitPrice: Number(item.price),
+          unitCost: item.costPrice != null ? Number(item.costPrice) : undefined,
+        })),
+        customerId,
+        locationId,
+      },
+      { onSuccess: () => setCart([]) }
+    );
+  };
 
   if (isLoading)
     return (
@@ -117,7 +138,10 @@ const handleCheckout = () => {
         <select
           className="border rounded px-2 py-1 text-sm"
           value={customerId || ""}
-          onChange={(e) => setCustomerId(e.target.value || undefined)}
+          onChange={(e) => {
+            console.log(e.target.value);
+            setCustomerId(e.target.value || undefined);
+          }}
         >
           <option value="">Select customer (optional)</option>
           {customers.map((c) => (
@@ -129,7 +153,10 @@ const handleCheckout = () => {
         <select
           className="border rounded px-2 py-1 text-sm"
           value={locationId || ""}
-          onChange={(e) => setLocationId(e.target.value || undefined)}
+          onChange={(e) => {
+            console.log(e.target.value);
+            setLocationId(e.target.value || undefined);
+          }}
         >
           <option value="">Select location (optional)</option>
           {locations.map((l) => (
@@ -138,6 +165,14 @@ const handleCheckout = () => {
             </option>
           ))}
         </select>
+        {listsLoading && (
+          <span className="text-xs text-muted-foreground">Loading lists…</span>
+        )}
+        {(customersError || locationsError) && (
+          <span className="text-xs text-red-500">
+            Failed to load customers/locations
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">

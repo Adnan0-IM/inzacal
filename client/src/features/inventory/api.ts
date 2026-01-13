@@ -1,5 +1,9 @@
 import { api } from "@/lib/http";
-import type { LowStockItem, Product } from "@/types/product";
+import type {
+  CreateProductInput,
+  LowStockItem,
+  Product,
+} from "@/types/product";
 
 export const fetchProducts = async () => {
   const res = await api.get("/products");
@@ -7,7 +11,7 @@ export const fetchProducts = async () => {
   return res.data as Product[];
 };
 
-export const createProduct = async (newProduct: Omit<Product, "id">) => {
+export const createProduct = async (newProduct: CreateProductInput) => {
   const res = await api.post("/products", newProduct);
   if (!res.data) throw new Error("Failed to create");
   return res.data;

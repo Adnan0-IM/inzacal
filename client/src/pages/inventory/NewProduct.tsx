@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate } from "react-router"; // To go back after save
@@ -14,6 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; // Assuming you have sonner or use-toast
 import { useCreateProduct } from "@/features/inventory/queries";
+import { api } from "@/lib/http";
+import { useLocation as useGeoLocation } from "@/hooks/use-location";
+import type { CreateLocationInput, Location } from "@/types/location";
 
 // 1. Schema matches API expectations
 const productSchema = z.object({
@@ -50,6 +54,12 @@ const productSchema = z.object({
 const NewProduct = () => {
   const navigate = useNavigate();
   const { mutate: createProduct, isPending } = useCreateProduct();
+  const { location, loading: geoLoading } = useGeoLocation();
+
+  type SimpleIdName = { id: string; name: string };
+  const [locations, setLocations] = useState<SimpleIdName[]>([]);
+  const [listsLoading, setListsLoading] = useState<boolean>(true);
+  const [locationId, setLocationId] = useState<string | undefined>();
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -64,6 +74,25 @@ const NewProduct = () => {
     },
   });
 
+  useEffect(() => {
+    let mounted = true;
+    setListsLoading(true);
+    api
+      .get<SimpleIdName[]>("/locations")
+      .then((r) => r.data)
+      .then((locs) => {
+        if (!mounted) return;
+        const list = (locs || []).map((l) => ({ id: l.id, name: l.name }));
+        setLocations(list);
+        // If only one location, preselect it
+        if (list.length === 1) setLocationId(list[0].id);
+      })
+      .finally(() => mounted && setListsLoading(false));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   function onSubmit(values: z.infer<typeof productSchema>) {
     // 2. Convert strings to numbers for the API
     createProduct(
@@ -73,6 +102,7 @@ const NewProduct = () => {
         costPrice: Number(values.costPrice),
         stock: Number(values.stock),
         minStock: Number(values.minStock),
+        locationId, // allocate initial stock to this location if provided
       },
       {
         onSuccess: () => {
@@ -195,6 +225,70 @@ const NewProduct = () => {
                 </FormItem>
               )}
             />
+          </div>
+
+          {/* Location selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Assign to Location</label>
+              <select
+                className="border rounded px-2 py-2 text-sm"
+                value={locationId || ""}
+                onChange={(e) => setLocationId(e.target.value || undefined)}
+              >
+                <option value="">No location (general stock)</option>
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+              {listsLoading && (
+                <span className="text-xs text-muted-foreground">
+                  Loading locations…
+                </span>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Quick-create Location
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={geoLoading}
+                onClick={async () => {
+                  try {
+                    const name = "My Location";
+                    const payload: CreateLocationInput = { name };
+                    if (location) {
+                      payload.lat = location.latitude;
+                      payload.lng = location.longitude;
+                    }
+                    const res = await api.post<Location>("/locations", payload);
+                    const newLoc = res.data;
+                    setLocations((prev) => [
+                      ...prev,
+                      { id: newLoc.id, name: newLoc.name },
+                    ]);
+                    setLocationId(newLoc.id);
+                    toast.success("Location created");
+                  } catch (err: unknown) {
+                    const message =
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to create location";
+                    toast.error(message);
+                  }
+                }}
+              >
+                {geoLoading ? "Detecting…" : "Use my current location"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Creates a location for this branch using your current
+                coordinates.
+              </p>
+            </div>
           </div>
 
           <div className="flex justify-end gap-4">

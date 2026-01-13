@@ -3,10 +3,15 @@ export type Product = {
   name: string;
   sku?: string;
   description?: string;
-  price: number; 
+  price: number;
   costPrice?: number;
   stock: number;
   minStock: number;
+};
+
+// Payload for creating a product; optional locationId allocates initial stock to a branch
+export type CreateProductInput = Omit<Product, "id"> & {
+  locationId?: string;
 };
 
 export type LowStockItem = {
@@ -15,4 +20,3 @@ export type LowStockItem = {
   stock: number;
   minStock: number;
 };
-

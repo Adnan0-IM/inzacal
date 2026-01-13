@@ -31,23 +31,57 @@ export const getProduct = async (req: Request, res: Response) => {
 
 export const createProduct = async (req: Request, res: Response) => {
   const organizationId = req.orgId;
-  const { name, sku, description, price, costPrice, stock, minStock } =
-    req.body;
-  if (!organizationId || !name || !sku || !costPrice || !price)
+  const {
+    name,
+    sku,
+    description,
+    price,
+    costPrice,
+    stock,
+    minStock,
+    locationId,
+  } = req.body ?? {};
+
+  if (!organizationId || !name || !sku || !costPrice || !price) {
     return res.status(400).json({ error: "Missing required fields" });
-  const product = await prisma.product.create({
-    data: {
-      organizationId,
-      name,
-      sku,
-      description,
-      price,
-      costPrice,
-      stock: stock || 0,
-      minStock: minStock || 0,
-    },
-  });
-  res.status(201).json(product);
+  }
+
+  try {
+    const product = await prisma.product.create({
+      data: {
+        organizationId,
+        name,
+        sku,
+        description,
+        price,
+        costPrice,
+        stock: stock || 0,
+        minStock: minStock || 0,
+      },
+    });
+
+    // If a locationId is provided, allocate the initial stock to that location
+    if (locationId && (stock ?? 0) > 0) {
+      await prisma.productStock.upsert({
+        where: {
+          productId_locationId: { productId: product.id, locationId },
+        },
+        update: {
+          quantity: { increment: Number(stock) || 0 },
+        },
+        create: {
+          productId: product.id,
+          locationId,
+          quantity: Number(stock) || 0,
+        },
+      });
+    }
+
+    return res.status(201).json(product);
+  } catch (error) {
+    console.error("Failed to create product:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
 export const updateProduct = async (req: Request, res: Response) => {
