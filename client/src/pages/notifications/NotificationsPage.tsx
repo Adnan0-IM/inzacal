@@ -17,6 +17,35 @@ import {
   useNotifications,
 } from "@/features/notifications/queries";
 
+function getNotificationMessage(payload: unknown): string {
+  if (!payload) return "";
+  if (typeof payload === "string") return payload;
+
+  if (typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    const candidates = [
+      record.message,
+      record.title,
+      record.subject,
+      record.reason,
+      record.description,
+    ];
+    const firstString = candidates.find((c) => typeof c === "string") as
+      | string
+      | undefined;
+    if (firstString) return firstString;
+
+    try {
+      const json = JSON.stringify(payload);
+      return json.length > 120 ? `${json.slice(0, 120)}…` : json;
+    } catch {
+      return "";
+    }
+  }
+
+  return "";
+}
+
 export default function NotificationsPage() {
   const { data: notifications, isLoading } = useNotifications();
   const { mutate: markRead, isPending } = useMarkNotificationRead();
@@ -45,6 +74,7 @@ export default function NotificationsPage() {
                   <TableRow>
                     <TableHead>Status</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Message</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
@@ -52,6 +82,7 @@ export default function NotificationsPage() {
                 <TableBody>
                   {notifications.map((n) => {
                     const unread = !n.readAt;
+                    const message = getNotificationMessage(n.payload);
                     return (
                       <TableRow key={n.id}>
                         <TableCell>
@@ -62,6 +93,11 @@ export default function NotificationsPage() {
                           )}
                         </TableCell>
                         <TableCell className="font-medium">{n.type}</TableCell>
+                        <TableCell className="max-w-[420px] truncate">
+                          {message || (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {new Date(n.createdAt).toLocaleString()}
                         </TableCell>
