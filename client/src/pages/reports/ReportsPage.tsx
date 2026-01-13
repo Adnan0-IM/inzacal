@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   useDownloadSalesCsv,
   useDownloadSalesPdf,
 } from "@/features/reports/queries";
@@ -25,16 +32,20 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-1">
               <div className="text-xs text-muted-foreground">Period</div>
-              <select
-                className="border rounded px-2 py-2 text-sm"
+              <Select
                 value={period}
-                onChange={(e) => setPeriod(e.target.value as ReportPeriod)}
+                onValueChange={(v) => setPeriod(v as ReportPeriod)}
               >
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="yearly">Yearly</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <div className="text-xs text-muted-foreground">
