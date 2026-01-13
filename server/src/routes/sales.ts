@@ -34,7 +34,7 @@ export const salesRouter = Router();
  *           schema:
  *             type: object
  *             properties:
- *               locationId:
+ *               branchName:
  *                 type: string
  *               customerId:
  *                 type: string
@@ -52,7 +52,7 @@ export const salesRouter = Router();
  *                       type: number
  *                     costPrice:
  *                       type: number
- *             required: [locationId, items]
+ *             required: [branchName, items]
  *     responses:
  *       201:
  *         description: Created sale
@@ -62,6 +62,10 @@ export const salesRouter = Router();
  *               $ref: '#/components/schemas/Sale'
  */
 salesRouter.get("/", getSales);
+
+salesRouter.get("/summary", salesSummary);
+
+salesRouter.get("/recent", getRecents);
 
 /**
  * @openapi
@@ -85,40 +89,6 @@ salesRouter.get("/", getSales);
  *       404:
  *         description: Not found
  */
-salesRouter.get("/:id", getSale);
-
 salesRouter.post("/", createSale);
 
-/**
- * @openapi
- * /api/sales/summary:
- *   get:
- *     tags: [Sales]
- *     summary: Sales summary metrics
- *     responses:
- *       200:
- *         description: Summary metrics including revenue, tax, profit
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AnalyticsSummary'
- */
-salesRouter.get("/summary", salesSummary);
-
-/**
- * @openapi
- * /api/sales/recent:
- *   get:
- *     tags: [Sales]
- *     summary: Recently created sales
- *     responses:
- *       200:
- *         description: Array of recent sales
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Sale'
- */
-salesRouter.get("/recent", getRecents);
+salesRouter.get("/:id", getSale);

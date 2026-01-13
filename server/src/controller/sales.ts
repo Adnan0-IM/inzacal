@@ -53,15 +53,20 @@ export const getSale = async (req: Request, res: Response) => {
 export const createSale = async (req: Request, res: Response) => {
   const organizationId = req.orgId;
   const userId = req.user?.id;
-  const { items, customerId, locationId } = req.body;
+  const { items, customerId, branchName } = req.body as {
+    items: any[];
+    customerId?: string;
+    branchName?: string;
+  };
 
   if (!organizationId || !userId)
     return res.status(401).json({ error: "Unauthorized" });
   if (!Array.isArray(items) || items.length === 0)
     return res.status(400).json({ error: "No items" });
-  // For branch performance and per-location stock management, require location
-  if (!locationId)
-    return res.status(400).json({ error: "Location is required for sales" });
+
+  if (!branchName || !String(branchName).trim()) {
+    return res.status(400).json({ error: "Branch is required for sales" });
+  }
 
   try {
     // Compute total from items
@@ -73,17 +78,7 @@ export const createSale = async (req: Request, res: Response) => {
 
     const productIds: string[] = items.map((it: any) => it.productId);
 
-    // Fetch location-specific stocks
-    const stocks = await prisma.productStock.findMany({
-      where: {
-        locationId,
-        productId: { in: productIds },
-      },
-      select: { productId: true, quantity: true },
-    });
-    const stockMap = new Map(stocks.map((s) => [s.productId, s.quantity]));
-
-    // Also fetch general product stock for fallback
+    // Use general (global) product stock only.
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
       select: { id: true, stock: true },
@@ -92,9 +87,8 @@ export const createSale = async (req: Request, res: Response) => {
 
     for (const it of items) {
       const requested = Number(it.quantity);
-      // Check location-specific stock first, fallback to product general stock
-      const available =
-        stockMap.get(it.productId) ?? productStockMap.get(it.productId);
+      const productAvailable = productStockMap.get(it.productId);
+      const available = productAvailable;
 
       if (requested <= 0) {
         return res
@@ -103,12 +97,12 @@ export const createSale = async (req: Request, res: Response) => {
       }
       if (available == null || available === 0) {
         return res.status(400).json({
-          error: `Product ${it.productId} is not stocked at the selected location`,
+          error: `Product ${it.productId} is out of stock`,
         });
       }
       if (available < requested) {
         return res.status(400).json({
-          error: `Insufficient stock for product ${it.productId} at selected location (available: ${available})`,
+          error: `Insufficient stock for product ${it.productId} (available: ${available})`,
         });
       }
     }
@@ -116,7 +110,6 @@ export const createSale = async (req: Request, res: Response) => {
     // Compute VAT and amounts using Decimal math
     const vat = await computeVatForSale({
       organizationId,
-      locationId,
       items: items.map((it: any) => ({
         productId: it.productId,
         quantity: Number(it.quantity),
@@ -132,7 +125,7 @@ export const createSale = async (req: Request, res: Response) => {
           organizationId,
           userId,
           customerId: customerId ?? null,
-          locationId: locationId ?? null,
+          branchName: String(branchName).trim(),
           totalAmount: totalAmountDec,
           grossAmount: vat.grossAmount,
           taxableAmount: vat.taxableAmount,
@@ -150,43 +143,9 @@ export const createSale = async (req: Request, res: Response) => {
         include: { items: true },
       });
 
-      // Decrement per-location inventory and aggregate product stock
+      // Decrement global inventory
       for (const it of items) {
         const qty = Number(it.quantity);
-
-        // Try to update location-specific stock, create if doesn't exist
-        const existingStock = await tx.productStock.findUnique({
-          where: {
-            productId_locationId: { productId: it.productId, locationId },
-          },
-        });
-
-        if (existingStock) {
-          await tx.productStock.update({
-            where: {
-              productId_locationId: { productId: it.productId, locationId },
-            },
-            data: { quantity: { decrement: qty } },
-          });
-        } else {
-          // If no location stock exists, create it with negative quantity
-          // (implying stock came from general product stock)
-          const product = await tx.product.findUnique({
-            where: { id: it.productId },
-            select: { stock: true },
-          });
-          if (product) {
-            await tx.productStock.create({
-              data: {
-                productId: it.productId,
-                locationId,
-                quantity: product.stock - qty,
-              },
-            });
-          }
-        }
-
-        // Always decrement the general product stock
         await tx.product.update({
           where: { id: it.productId },
           data: { stock: { decrement: qty } },
@@ -195,6 +154,8 @@ export const createSale = async (req: Request, res: Response) => {
 
       return created;
     });
+
+    return res.status(201).json(sale);
   } catch (error) {
     console.log("Failed to create sale", error);
     res.status(500).json({ error: "Failed to create sales" });

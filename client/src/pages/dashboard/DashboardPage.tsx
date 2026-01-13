@@ -20,9 +20,9 @@ import {
   ChartLegendContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import type { LowStockItem } from "@/types/product";
 import type { Period } from "@/types/sales";
 import { Spinner } from "@/components/ui/spinner";
+import { useLowStockProducts } from "@/features/inventory/queries";
 import {
   useDownloadSalesCsv,
   useDownloadSalesPdf,
@@ -75,8 +75,10 @@ const DashboardPage = () => {
   const downloadCsv = useDownloadSalesCsv();
   const downloadPdf = useDownloadSalesPdf();
 
-  const lowLoading = false;
-  const lowStock: LowStockItem[] = [];
+  const { data: lowStock = [], isLoading: lowLoading } = useLowStockProducts(
+    5,
+    { enabled: queriesEnabled }
+  );
   // Derive fields from analytics summary
   const kpis = {
     salesToday: summary?.totalSales ?? 0,

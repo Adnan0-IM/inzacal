@@ -81,14 +81,14 @@ reportsRouter.get("/sales.csv", async (req, res) => {
   }
 
   let csv =
-    "Sale ID,Date,Customer ID,Location ID,Gross Sales,VAT,Net Sales,COGS,Gross Profit\n";
+    "Sale ID,Date,Customer ID,Branch,Gross Sales,VAT,Net Sales,COGS,Gross Profit\n";
   for (const s of sales) {
     const gross = Number((s as any).grossAmount ?? 0);
     const vat = Number((s as any).taxAmount ?? 0);
     const netSales = gross; // excluding VAT
     const cogs = cogsBySale.get(s.id) ?? 0;
     const gp = netSales - cogs;
-    csv += `${s.id},${s.createdAt.toISOString()},${s.customerId ?? ""},${s.locationId ?? ""},${gross},${vat},${netSales},${cogs},${gp}\n`;
+    csv += `${s.id},${s.createdAt.toISOString()},${s.customerId ?? ""},${(s as any).branchName ?? ""},${gross},${vat},${netSales},${cogs},${gp}\n`;
   }
 
   res.setHeader("Content-Type", "text/csv");
@@ -225,7 +225,7 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
     .text("ID", colX.id, doc.y, { continued: true })
     .text("Date", colX.date, doc.y, { continued: true })
     .text("Customer", colX.cust, doc.y, { continued: true })
-    .text("Location", colX.loc, doc.y, { continued: true })
+    .text("Branch", colX.loc, doc.y, { continued: true })
     .text("Gross", colX.gross, doc.y, { continued: true })
     .text("VAT", colX.vat, doc.y, { continued: true })
     .text("Gross P.", colX.gp, doc.y);
@@ -237,23 +237,13 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
   const customerIds = Array.from(
     new Set(sales.map((s) => s.customerId).filter(Boolean))
   ) as string[];
-  const locationIds = Array.from(
-    new Set(sales.map((s) => s.locationId).filter(Boolean))
-  ) as string[];
   const customers = customerIds.length
     ? await prisma.customer.findMany({
         where: { id: { in: customerIds } },
         select: { id: true, name: true },
       })
     : [];
-  const locations = locationIds.length
-    ? await prisma.location.findMany({
-        where: { id: { in: locationIds } },
-        select: { id: true, name: true },
-      })
-    : [];
   const cname = new Map<string, string>(customers.map((c) => [c.id, c.name]));
-  const lname = new Map<string, string>(locations.map((l) => [l.id, l.name]));
 
   // Rows
   for (const s of sales) {
@@ -270,7 +260,7 @@ reportsRouter.get("/sales.pdf", async (req, res) => {
       .text(cname.get(s.customerId ?? "") ?? "", colX.cust, y, {
         continued: true,
       })
-      .text(lname.get(s.locationId ?? "") ?? "", colX.loc, y, {
+      .text(String((s as any).branchName ?? ""), colX.loc, y, {
         continued: true,
       })
       .text(fmt(gross), colX.gross, y, { continued: true })

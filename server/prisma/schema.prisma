@@ -186,6 +186,7 @@ model Sale {
   customer     Customer?      @relation(fields: [customerId], references: [id])
   locationId   String?
   location     Location?      @relation(fields: [locationId], references: [id])
+  branchName   String?
   taxAmount    Decimal?
   currency     String         @default("NGN")
   items        SaleLineItem[]

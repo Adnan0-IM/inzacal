@@ -39,7 +39,7 @@ export const createProduct = async (req: Request, res: Response) => {
     costPrice,
     stock,
     minStock,
-    locationId,
+    locationId: rawLocationId,
   } = req.body ?? {};
 
   if (!organizationId || !name || !sku || !costPrice || !price) {
@@ -60,7 +60,21 @@ export const createProduct = async (req: Request, res: Response) => {
       },
     });
 
-    // If a locationId is provided, allocate the initial stock to that location
+    let locationId = rawLocationId as string | undefined;
+    // If caller didn't specify a location, and org has exactly one location,
+    // auto-allocate initial stock to that location.
+    if (!locationId && (stock ?? 0) > 0) {
+      const locs = await prisma.location.findMany({
+        where: { organizationId },
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+        take: 2,
+      });
+      const [only] = locs;
+      if (locs.length === 1 && only) locationId = only.id;
+    }
+
+    // If a locationId is provided (or auto-selected), allocate the initial stock to that location
     if (locationId && (stock ?? 0) > 0) {
       await prisma.productStock.upsert({
         where: {
@@ -145,20 +159,14 @@ export const getLowStockProducts = async (req: Request, res: Response) => {
   if (!orgId) return res.status(401).json({ error: "Unauthorized" });
   const { limit = "10" } = req.query;
   const items = await prisma.product.findMany({
-    where: {
-      organizationId: orgId,
-      stock: { lt: prisma.product.fields.minStock }, // fallback if not supported by client, do manual compare later
-    },
+    where: { organizationId: orgId },
     orderBy: [{ stock: "asc" }, { updatedAt: "desc" }],
-    take: Number(limit),
     select: { id: true, name: true, stock: true, minStock: true },
   });
 
-  // Prisma cannot compare two fields directly in where; use filter fallback
-  const filtered = items.filter(
-    (p: { name: string; id: string; stock: number; minStock: number }) =>
-      p.stock < p.minStock
-  );
+  const filtered = items
+    .filter((p: { stock: number; minStock: number }) => p.stock <= p.minStock)
+    .slice(0, Number(limit));
 
   res.json(filtered);
 };

@@ -9,7 +9,7 @@ type SaleItemInput = {
 
 export async function computeVatForSale(params: {
   organizationId: string;
-  locationId: string;
+  locationId?: string;
   items: SaleItemInput[];
 }): Promise<{
   grossAmount: Prisma.Decimal;
@@ -43,13 +43,18 @@ export async function computeVatForSale(params: {
     }
   }
 
-  // Determine tax rate by location: prefer LGA, then state, else ALL, else default 0.075
-  const loc = await prisma.location.findFirst({
-    where: { id: locationId, organizationId },
-    select: { lga: true, state: true },
-  });
   const now = new Date();
   let rateDec = new Prisma.Decimal(0);
+
+  // Determine tax rate by location when available: prefer LGA, then state, else ALL.
+  // If no location is provided, use org-wide ALL rule (if any).
+  const loc = locationId
+    ? await prisma.location.findFirst({
+        where: { id: locationId, organizationId },
+        select: { lga: true, state: true },
+      })
+    : null;
+
   if (loc) {
     const ruleLga = loc.lga
       ? await prisma.taxRule.findFirst({
@@ -88,6 +93,17 @@ export async function computeVatForSale(params: {
         : null;
     const found = ruleLga ?? ruleState ?? ruleAll;
     if (found) rateDec = new Prisma.Decimal(found.rate as any);
+  } else {
+    const ruleAll = await prisma.taxRule.findFirst({
+      where: {
+        organizationId,
+        jurisdiction: "ALL",
+        effectiveFrom: { lte: now },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
+      },
+      orderBy: { effectiveFrom: "desc" },
+    });
+    if (ruleAll) rateDec = new Prisma.Decimal(ruleAll.rate as any);
   }
   if (rateDec.equals(0)) {
     // Default VAT 7.5%

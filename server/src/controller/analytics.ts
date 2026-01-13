@@ -219,10 +219,10 @@ export const locationPerformance = async (req: Request, res: Response) => {
     };
   }
 
-  // Fetch sales per location and their line items for COGS
+  // Fetch sales per branch (legacy: location) and their line items for COGS
   const sales = await prisma.sale.findMany({
     where: whereSale,
-    select: { id: true, totalAmount: true, locationId: true },
+    select: { id: true, totalAmount: true, locationId: true, branchName: true },
   });
 
   const saleIds = sales.map(
@@ -239,11 +239,12 @@ export const locationPerformance = async (req: Request, res: Response) => {
       })
     : [];
 
-  // Aggregate totals per location
+  // Aggregate totals per branch (or legacy locationId)
   const perf = new Map<
     string,
     {
       locationId: string | null;
+      branchName: string | null;
       revenue: number;
       salesCount: number;
       cogs: number;
@@ -251,9 +252,15 @@ export const locationPerformance = async (req: Request, res: Response) => {
   >();
 
   for (const s of sales) {
-    const key = s.locationId ?? "unassigned";
+    const key =
+      s.branchName && s.branchName.trim()
+        ? `branch:${s.branchName.trim()}`
+        : s.locationId
+          ? `loc:${s.locationId}`
+          : "unassigned";
     const prev = perf.get(key) ?? {
       locationId: s.locationId ?? null,
+      branchName: (s as any).branchName ? String((s as any).branchName) : null,
       revenue: 0,
       salesCount: 0,
       cogs: 0,
@@ -274,7 +281,12 @@ export const locationPerformance = async (req: Request, res: Response) => {
   }
 
   for (const s of sales) {
-    const key = s.locationId ?? "unassigned";
+    const key =
+      s.branchName && s.branchName.trim()
+        ? `branch:${s.branchName.trim()}`
+        : s.locationId
+          ? `loc:${s.locationId}`
+          : "unassigned";
     const entry = perf.get(key);
     if (!entry) continue;
     const lis = itemsBySale.get(s.id) ?? [];
@@ -283,17 +295,17 @@ export const locationPerformance = async (req: Request, res: Response) => {
     }
   }
 
-  // Attach location names
-  const locationIds = Array.from(perf.keys()).filter(
-    (id) => id !== "unassigned"
-  ) as string[];
-  const locations = locationIds.length
+  // Attach location names for legacy entries (when branchName isn't present)
+  const legacyLocationIds = Array.from(perf.values())
+    .map((x) => x.locationId)
+    .filter(Boolean) as string[];
+  const uniqueLegacyLocationIds = Array.from(new Set(legacyLocationIds));
+  const locations = uniqueLegacyLocationIds.length
     ? await prisma.location.findMany({
-        where: { id: { in: locationIds } },
+        where: { id: { in: uniqueLegacyLocationIds } },
         select: { id: true, name: true },
       })
     : [];
-
   const nameById = new Map(
     locations.map((l: { name: string; id: string }) => [l.id, l.name])
   );
@@ -301,9 +313,11 @@ export const locationPerformance = async (req: Request, res: Response) => {
   const result = Array.from(perf.values())
     .map((x) => ({
       locationId: x.locationId,
-      locationName: x.locationId
-        ? (nameById.get(x.locationId) ?? "Unknown")
-        : "Unassigned",
+      locationName: x.branchName?.trim()
+        ? x.branchName.trim()
+        : x.locationId
+          ? (nameById.get(x.locationId) ?? "Unknown")
+          : "Unassigned",
       revenue: x.revenue,
       salesCount: x.salesCount,
       cogs: x.cogs,

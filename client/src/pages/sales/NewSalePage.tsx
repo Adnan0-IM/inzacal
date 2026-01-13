@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -16,7 +23,7 @@ import type { Product } from "@/types/product";
 import { useProducts } from "@/features/inventory/queries";
 import { useCreateSale } from "@/features/sales/queries";
 import { useCustomers } from "@/features/customers/queries";
-import { useLocations } from "@/features/locations/queries";
+import { toast } from "sonner";
 
 type CartItem = Product & { quantity: number };
 type SimpleIdName = { id: string; name: string };
@@ -30,26 +37,17 @@ export default function NewSalePage() {
     isLoading: customersLoading,
     isError: customersError,
   } = useCustomers();
-  const {
-    data: locationsData,
-    isLoading: locationsLoading,
-    isError: locationsError,
-  } = useLocations();
 
   const customers: SimpleIdName[] = useMemo(
     () => (customersData || []).map((c) => ({ id: c.id, name: c.name })),
     [customersData]
   );
-  const locations: SimpleIdName[] = useMemo(
-    () => (locationsData || []).map((l) => ({ id: l.id, name: l.name })),
-    [locationsData]
-  );
-  const listsLoading = customersLoading || locationsLoading;
+  const listsLoading = customersLoading;
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [customerId, setCustomerId] = useState<string | undefined>();
-  const [locationId, setLocationId] = useState<string | undefined>();
+  const [branchName, setBranchName] = useState<string>("");
 
   // Filter products for the picker
   const filteredProducts =
@@ -108,6 +106,10 @@ export default function NewSalePage() {
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
+    if (!branchName.trim()) {
+      toast.error("Please enter a branch");
+      return;
+    }
     createSale(
       {
         items: cart.map((item) => ({
@@ -118,7 +120,7 @@ export default function NewSalePage() {
           unitCost: item.costPrice != null ? Number(item.costPrice) : undefined,
         })),
         customerId,
-        locationId,
+        branchName: branchName.trim(),
       },
       { onSuccess: () => setCart([]) }
     );
@@ -135,43 +137,36 @@ export default function NewSalePage() {
     <div className="container mx-auto p-6">
       {/* NEW: selectors */}
       <div className="mb-4 flex flex-wrap gap-3">
-        <select
-          className="border rounded px-2 py-1 text-sm"
-          value={customerId || ""}
-          onChange={(e) => {
-            console.log(e.target.value);
-            setCustomerId(e.target.value || undefined);
-          }}
+        <Input
+          className="w-[240px]"
+          value={branchName}
+          onChange={(e) => setBranchName(e.target.value)}
+          placeholder="Branch (required)"
+        />
+
+        <Select
+          value={customerId ?? ""}
+          onValueChange={(v) =>
+            setCustomerId(v === "__none__" ? undefined : v || undefined)
+          }
         >
-          <option value="">Select customer (optional)</option>
-          {customers.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="border rounded px-2 py-1 text-sm"
-          value={locationId || ""}
-          onChange={(e) => {
-            console.log(e.target.value);
-            setLocationId(e.target.value || undefined);
-          }}
-        >
-          <option value="">Select location (optional)</option>
-          {locations.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-[240px]">
+            <SelectValue placeholder="Select customer (optional)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">No customer</SelectItem>
+            {customers.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {listsLoading && (
           <span className="text-xs text-muted-foreground">Loading lists…</span>
         )}
-        {(customersError || locationsError) && (
-          <span className="text-xs text-red-500">
-            Failed to load customers/locations
-          </span>
+        {customersError && (
+          <span className="text-xs text-red-500">Failed to load customers</span>
         )}
       </div>
 
@@ -313,12 +308,12 @@ export default function NewSalePage() {
               <span>${totalAmount.toFixed(2)}</span>
             </div>
             <div className="text-xs text-muted-foreground">
-              Please select a location to complete this sale.
+              Please enter a branch to complete this sale.
             </div>
             <Button
               className="w-full"
               size="lg"
-              disabled={cart.length === 0 || isPending || !locationId}
+              disabled={cart.length === 0 || isPending || !branchName.trim()}
               onClick={handleCheckout}
             >
               {isPending ? "Processing..." : "Complete Sale"}
