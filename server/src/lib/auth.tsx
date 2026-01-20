@@ -23,6 +23,13 @@ export const auth = betterAuth({
     cookieCache: { enabled: true },
   },
 
+  advanced: {
+    defaultCookieAttributes: {
+      sameSite: "None",
+      secure: true,
+    },
+  },
+
   plugins: [twoFactor(), organization()],
   user: {
     deleteUser: {
