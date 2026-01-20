@@ -9,6 +9,7 @@ export const corsRouter = Router();
 
 const allowedList = [
   "http://localhost:5173",
+  "https://inzacal.vercel.app",
   process.env.APP_CLIENT_URL,
   process.env.PUBLIC_ORIGIN,
   process.env.BETTER_AUTH_URL,
