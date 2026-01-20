@@ -16,6 +16,7 @@ export const auth = betterAuth({
   trustedOrigins: [
     "http://localhost:5173",
     "https://inzacal-production.up.railway.app",
+    "https://inzacal.onrender.com",
     "https://inzacal.vercel.app",
   ],
 
