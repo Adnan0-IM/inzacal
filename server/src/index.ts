@@ -13,7 +13,7 @@ import { notificationsRouter } from "./routes/notifications.js";
 import { reportsRouter } from "./routes/reports.js";
 import { taxRouter } from "./routes/tax.js";
 import { corsRouter } from "./utils/cors.js";
-import "./utils/keep-awake.js";
+// import "./utils/keep-awake.js";
 import "./jobs/policyFeed.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger.js";
