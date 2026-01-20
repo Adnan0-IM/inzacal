@@ -18,6 +18,14 @@ export const auth = betterAuth({
     "https://inzacal-production.up.railway.app",
     "https://inzacal.vercel.app",
   ],
+ 
+  advanced: {
+   defaultCookieAttributes: {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    httpOnly: true,
+   }
+  },
   plugins: [twoFactor(), organization()],
   user: {
     deleteUser: {
@@ -47,4 +55,5 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     sendOnSignUp: true,
   },
+
 });
