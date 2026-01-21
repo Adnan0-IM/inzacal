@@ -31,6 +31,7 @@ export default function OrgUIRoute() {
         customRoles: [
           { role: "accountant", label: "Accountant" },
           { role: "salesperson", label: "Salesperson" },
+          { role: "investor", label: "Investor" }, 
         ],
       }}
       social={{ providers: ["google"] }}
